@@ -1,0 +1,53 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="HtmlUnknownAttribute" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="myValues">
+        <value>
+          <list size="6">
+            <item index="0" class="java.lang.String" itemvalue="true" />
+            <item index="1" class="java.lang.String" itemvalue="task.complete" />
+            <item index="2" class="java.lang.String" itemvalue="%}" />
+            <item index="3" class="java.lang.String" itemvalue="{%" />
+            <item index="4" class="java.lang.String" itemvalue="if" />
+            <item index="5" class="java.lang.String" itemvalue="method" />
+          </list>
+        </value>
+      </option>
+      <option name="myCustomValuesEnabled" value="true" />
+    </inspection_tool>
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="2">
+            <item index="0" class="java.lang.String" itemvalue="messages" />
+            <item index="1" class="java.lang.String" itemvalue="utils" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyPep8NamingInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="N803" />
+          <option value="N806" />
+          <option value="N802" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="str.sleep" />
+          <option value="tester01.notification_bot_telebot.Users.__delitem__" />
+          <option value="dict.has_key" />
+          <option value="str.str" />
+          <option value="sqlighter._________________________________________" />
+          <option value="main_file.main_file.messages" />
+          <option value="main_file.main_file.sqlighter" />
+          <option value="utils.TestStates" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
