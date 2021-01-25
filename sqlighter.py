@@ -4,6 +4,7 @@ import sqlite3
 class SQLighter:
 
     def __init__(self, tables):
+
         self.connection = sqlite3.connect(tables)
         self.cursor = self.connection.cursor()
 
