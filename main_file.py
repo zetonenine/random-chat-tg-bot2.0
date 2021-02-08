@@ -34,7 +34,6 @@ async def start_and_add_user_in_BD(message: types.Message):
     await message.answer(MESSAGES['start'])
 
 
-
 @dp.message_handler(commands=['help'], state='*')
 async def help_message(message: types.Message):
     """Информация о самом боте"""
