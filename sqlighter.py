@@ -1,5 +1,5 @@
 import sqlite3
-
+from redis_file import Redis, redis_add_new_user, redis_add_order
 
 class SQLighter:
 
@@ -20,6 +20,9 @@ class SQLighter:
             return self.cursor.execute("INSERT or IGNORE into 'users_states' ('chatID', 'state') VALUES(?,?)",
                                        (chatID, state))
 
+    def redis_add_user(self, chatID):
+        return redis_add_new_user(chatID)
+
     def user_exists(self, chatID):
         """Проверяем есть ли юзер в базе (неуверен)"""
         with self.connection:
@@ -30,9 +33,14 @@ class SQLighter:
         with self.connection:
             return self.cursor.execute('UPDATE "users" SET "status" = ? WHERE "chatID" = ?', (status, chatID))
 
+    def finding_free_chat_redis(self, chatID):
+        redis_add_order(chatID)
+
     def finding_free_chat(self, chatID, partner_chatID, status=False):
         """Ищем юзера с условием: status = 1, partner_chatID = Null/None
         Добавляем его chatID в partner_chatID и наоборот. У обоих сбрасываем status"""
+
+
         try:
             with self.connection:
                 free_user = self.cursor.execute('SELECT chatID FROM "users" WHERE "chatID" !=? AND "status" = 1 '

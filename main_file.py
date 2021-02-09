@@ -9,14 +9,14 @@ from aiogram.dispatcher import FSMContext
 from sqlighter import SQLighter
 from messages import MESSAGES
 from utils import TestStates
-
+from redis_file import r, redis_add_order
 
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token='1428472204:AAHSyI8mb6DBLAdX7o5if3XxTjvNfntN8ko')
 
-dp = Dispatcher(bot, storage=RedisStorage('localhost', 6379, db=5))
+dp = Dispatcher(bot, storage=RedisStorage('localhost', 6379, db=4))
 dp.middleware.setup(LoggingMiddleware())
 
 
@@ -29,9 +29,17 @@ async def start_and_add_user_in_BD(message: types.Message):
     """Начало работы бота и добавление юзера в БД.
     Возможно стоит добавлять в БД на следующих этапах"""
 
-    if not db.user_exists(message.from_user.id):
-        db.add_user(message.from_user.id)
+    # if not db.user_exists(message.from_user.id):
+    # db.add_user(message.from_user.id)
+    db.redis_add_user(message.from_user.id)
     await message.answer(MESSAGES['start'])
+    await message.answer(r.hgetall(0))
+
+
+@dp.message_handler(commands=['flush'], state='*')
+async def show_redis(message: types.Message):
+    r.flushall(0)
+    await message.reply(r.hgetall(0))
 
 
 @dp.message_handler(commands=['help'], state='*')
@@ -50,6 +58,11 @@ async def help_message(message: types.Message):
 async def help_message(message: types.Message):
     """Отправка информации об эффективном обучении"""
     await message.answer(MESSAGES['get'])
+
+
+@dp.message_handler(state='*', commands=['order'])
+async def test_add_order_redis(message: types.Message):
+    await message.answer(redis_add_order(message.from_user.id))
 
 
 # ХЭНДЛЕРЫ ОБРАБОТЧИКИ ЧАТА - СОСТОЯНИЕ chat_process
