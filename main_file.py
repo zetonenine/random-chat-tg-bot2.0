@@ -14,7 +14,7 @@ from utils import TestStates
 
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token='1428472204:AAHSyI8mb6DBLAdX7o5if3XxTjvNfntN8ko')
+bot = Bot(token='TOKEN')
 
 dp = Dispatcher(bot, storage=RedisStorage('localhost', 6379, db=5))
 dp.middleware.setup(LoggingMiddleware())
