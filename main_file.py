@@ -6,21 +6,19 @@ from aiogram.contrib.fsm_storage.redis import RedisStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 
-from sqlighter import SQLighter
 from messages import MESSAGES
 from utils import TestStates
-
+from postgresqler import BD
 
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token='TOKEN')
 
-dp = Dispatcher(bot, storage=RedisStorage('localhost', 6379, db=5))
+dp = Dispatcher(bot, storage=RedisStorage('localhost', 6379, db=4))
 dp.middleware.setup(LoggingMiddleware())
 
-
-db = SQLighter('tables.db')
+db = BD()
 
 
 @dp.message_handler(commands=['start'], state='*')
@@ -31,6 +29,7 @@ async def start_and_add_user_in_BD(message: types.Message):
 
     if not db.user_exists(message.from_user.id):
         db.add_user(message.from_user.id)
+    # db.redis_add_user(message.from_user.id)
     await message.answer(MESSAGES['start'])
 
 
@@ -52,6 +51,10 @@ async def help_message(message: types.Message):
     await message.answer(MESSAGES['get'])
 
 
+@dp.message_handler(state=TestStates.chat_process, commands=['find'])
+async def wrong_state_command_find_catcher(message: types.Message):
+    await message.answer('You already have a conversation. Just send a voice..')
+
 # ХЭНДЛЕРЫ ОБРАБОТЧИКИ ЧАТА - СОСТОЯНИЕ chat_process
 
 
@@ -62,24 +65,19 @@ async def finding(message: types.Message, state: FSMContext):
     Если юзер не будет добавлен в БД ранее
     то нужно вызвать db.add_user"""
 
-    # убрать это условие, когда подключится redis.
-    if db.pcID_checker(message.from_user.id) == None:
-        db.status_true(True, message.from_user.id)
-        await TestStates.chat_process.set()
-        await message.answer('Searching..')
-        """Ищем свободного юзера со status'ом = 1. Добавляем юзера в состояние."""
+    db.status_true(message.from_user.id)
+    await TestStates.chat_process.set()
+    await message.answer('Searching..')
+    """Ищем свободного юзера со status'ом = 1. Добавляем юзера в состояние."""
 
-        partner_chatID = db.finding_free_chat(message.from_user.id, None)
-        if partner_chatID is not None:
-            await message.answer(MESSAGES['match_1'], parse_mode='html')
-            await bot.send_message(partner_chatID, MESSAGES['match_2'], parse_mode='html')
-
-    else:
-        await message.answer('You already have a conversation. Just send a voice..')
+    partner_chatID = db.finding_free_chat(message.from_user.id)
+    if partner_chatID is not None:
+        await message.answer(MESSAGES['match_1'], parse_mode='html')
+        await bot.send_message(partner_chatID, MESSAGES['match_2'], parse_mode='html')
 
 
 @dp.message_handler(content_types=['voice'], state=TestStates.chat_process)
-async def voice_messages_resender(message: types.voice, state: FSMContext):
+async def voice_messages_resender(message: types.voice):
 
     """Обработчик войсов, пересылка сообщения если чат установлен, и ответ, если чата нет"""
 
@@ -94,50 +92,24 @@ async def stop_chat(message: types.Message, state: FSMContext):
     Также очищает partner_chatID.
     Как и в функции finding, возможно нужен вызов db.add_user"""
 
-    pcID = db.status_false_and_clear_partner(False, message.from_user.id, None)
+    pcID = db.status_false_and_clear_partner(message.from_user.id)
 
-    await state.finish()
+    await state.reset_state()
+    await state.storage.reset_state(user=pcID)
     await message.answer(MESSAGES['stop_1'])
     await bot.send_message(pcID, MESSAGES['stop_2'])
 
 
-@dp.message_handler(content_types=['text', 'sticker', 'photo'], state=TestStates.chat_process)
-async def messages_chat_catcher(message: types.Message, state: FSMContext):
-    pcID = db.pcID_checker(message.from_user.id)
+@dp.message_handler(content_types=['text', 'sticker', 'photo', 'video'], state=TestStates.chat_process)
+async def messages_chat_catcher(message: types.Message):
 
-    """Проверка на состояние: находится ли юзер в чате с кем-то в данный момент или нет"""
-    # убрать это условие, когда подключится redis.
+    """Если состяние chat_process и тип отправляемых сообщений не войс"""
 
-    if db.pcID_checker(message.from_user.id) != None:
-        if message.text != '/find':
-            await message.answer('Record a voice message.')
-    else:
-        await state.finish()
-        await messages_catcher(message)
+    if message.text != '/find':
+        await message.answer('Record a voice message.')
 
 
 # ЗДЕСЬ ЗАКАНЧИВАЮТСЯ
-
-
-@dp.message_handler(commands=['check'], state='*')
-async def checking(message: types.Message):
-
-    """Проверка на наличие юзера в базе данных"""
-
-    if not db.user_exists(message.from_user.id):
-        await message.answer('Вы не в базе')
-    else:
-        await message.answer('Вы в базе')
-
-
-@dp.message_handler(commands=['delete'], state='*')
-async def deleting(message: types.Message):
-
-    """Удаление юзера из БД"""
-
-    if db.user_exists(message.from_user.id):
-        db.user_deleting(message.from_user.id)
-        await message.answer('Вы удалены из базы')
 
 
 @dp.message_handler(state=None, content_types=types.ContentTypes.ANY)
@@ -145,19 +117,7 @@ async def messages_catcher(message: types.Message):
     """Проверка на состояние: находится ли юзер в чате с кем-то в данный момент или нет"""
 
     if message.content_type == 'voice':
-        # убрать это условие, когда подключится redis.
-        if db.pcID_checker(message.from_user.id) is None:
-            await message.answer('Для начала тебе нужно найти собеседника. Чтобы это сделать нажми /find')
-        else:
-            await TestStates.chat_process.set()
-            await voice_messages_resender(message, state=TestStates.chat_process)
-
-    else:
-        if db.pcID_checker(message.from_user.id) is None:
-            await message.answer('Это классно конечно, но не то. Чтобы найти собеседника, нажми /find')
-        else:
-            await TestStates.chat_process.set()
-            await messages_chat_catcher(message, state=TestStates.chat_process)
+        await message.answer('First you need to find chat partner. Click /find to do it')
 
 
 if __name__ == '__main__':
