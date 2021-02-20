@@ -1,7 +1,7 @@
 import redis
 
 
-r = redis.Redis(db=0)
+r = redis.Redis(db=None)
 
 
 def redis_add_new_user(chatID):
