@@ -2,7 +2,7 @@
 import logging
 from aiogram import Bot, Dispatcher, executor, types
 # from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.contrib.fsm_storage.redis import RedisStorage
+from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 
@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token='TOKEN')
 
-dp = Dispatcher(bot, storage=RedisStorage('localhost', 6379, db=4))
+dp = Dispatcher(bot, storage=RedisStorage2('localhost', 6379, db=4))
 dp.middleware.setup(LoggingMiddleware())
 
 db = BD()
