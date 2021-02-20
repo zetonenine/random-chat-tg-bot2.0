@@ -13,7 +13,7 @@ from postgresqler import BD
 
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token='TOKEN')
+bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
 
 dp = Dispatcher(bot, storage=RedisStorage2('localhost', 6379, db=4))
 dp.middleware.setup(LoggingMiddleware())
