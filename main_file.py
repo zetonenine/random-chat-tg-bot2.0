@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
 
-dp = Dispatcher(bot, storage=RedisStorage2(host='localhost', port=6379, db=None, password=None, ssl=None, loop=None)
+dp = Dispatcher(bot, storage=RedisStorage2(host='localhost', port=6379, db=None, password=None, ssl=None, loop=None))
 dp.middleware.setup(LoggingMiddleware())
 
 db = BD()
