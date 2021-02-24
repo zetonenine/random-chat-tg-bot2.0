@@ -26,6 +26,7 @@ async def start_and_add_user_in_BD(message: types.Message):
     """Начало работы бота и добавление юзера в БД.
     Возможно стоит добавлять в БД на следующих этапах"""
 
+    db.create()
     if not db.user_exists(message.from_user.id):
         db.add_user(message.from_user.id)
     # db.redis_add_user(message.from_user.id)
