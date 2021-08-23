@@ -1,0 +1,33 @@
+version: '3.6'
+
+services:
+
+  db:
+    image: postgres:13
+    container_name: "db"
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: randomchat
+      POSTGRES_USER: randomchat
+      POSTGRES_DB: randomchat
+
+  bot:
+    image: random_chat:latest
+    ports:
+      - 80:80
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: "bot"
+    restart: always
+    environment:
+      - BOT_TOKEN=1233194283:AAEltBBA7sqZ7HPo5Gxef5fALXiqhyRwBqk
+    depends_on:
+      - db
+
+volumes:
+  postgres-db-volume:
