@@ -3,8 +3,8 @@ import random
 import asyncio
 
 from aiogram import Bot, Dispatcher, executor, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-# from aiogram.contrib.fsm_storage.redis import RedisStorage2
+# from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 
@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
 
-dp = Dispatcher(bot, storage=MemoryStorage())
+dp = Dispatcher(bot, storage=RedisStorage2())
 dp.middleware.setup(LoggingMiddleware())
 
 db = DataInterface()
@@ -82,15 +82,26 @@ async def finding(message: types.Message, state: FSMContext):
     то нужно вызвать db.add_user"""
 
     await BotStates.chat_process.set()
-    db.add_connects(message.from_user.id)
+    partner_id = db.add_connects2(message.from_user.id)
     await message.answer('Searching..')
-
-    partner_id = db.start_room_chat(message.from_user.id)
-    if partner_id is not None:
+    if partner_id:
+        db.start_room_chat2(message.from_user.id, partner_id)
         await message.answer(MESSAGES['match_1'], parse_mode='html')
         await bot.send_message(partner_id, MESSAGES['match_2'], parse_mode='html')
     else:
         await check_partner(message.from_user.id, state, 3)
+
+
+    # await BotStates.chat_process.set()
+    # db.add_connects(message.from_user.id)
+    # await message.answer('Searching..')
+    #
+    # partner_id = db.start_room_chat(message.from_user.id)
+    # if partner_id is not None:
+    #     await message.answer(MESSAGES['match_1'], parse_mode='html')
+    #     await bot.send_message(partner_id, MESSAGES['match_2'], parse_mode='html')
+    # else:
+    #     await check_partner(message.from_user.id, state, 3)
 
 
 async def check_partner(user_id, state: FSMContext, time):
@@ -101,7 +112,8 @@ async def check_partner(user_id, state: FSMContext, time):
     else:
         if time > 8:
             await state.reset_state()
-            db.stop_searching(user_id)
+            # db.stop_searching(user_id)
+            db.stop_searching2(user_id)
             await bot.send_message(user_id, MESSAGES['no_partner_message'])
             return
         else:
@@ -114,7 +126,7 @@ async def voice_messages_sender(message: types.voice):
 
     """Обработчик войсов, пересылка сообщения если чат установлен, и ответ, если чата нет"""
 
-    partner_id = db.get_partner_id(message.from_user.id)
+    partner_id = db.get_partner_user_id(message.from_user.id)
     await bot.send_voice(partner_id, message.voice.file_id)
 
 
@@ -125,14 +137,23 @@ async def stop_chat(message: types.Message, state: FSMContext):
     Также очищает partner_chatID.
     Как и в функции finding, возможно нужен вызов db.add_user"""
 
-    await BotStates.stop_chat_process.set()
-    await message.answer(MESSAGES['sure_stop_chat'], parse_mode='html')
+    partner_id = db.get_partner_user_id(message.from_user.id)
+    if partner_id is None:
+        # db.stop_room_chat(message.from_user.id)
+        db.stop_searching2(message.from_user.id)
+        await state.reset_state()
+        await message.answer(MESSAGES['stop_searching'])
+    else:
+        await BotStates.stop_chat_process.set()
+        await message.answer(MESSAGES['sure_stop_chat'], parse_mode='html')
 
 
 @dp.message_handler(content_types=types.ContentTypes.ANY, state=BotStates.stop_chat_process)
 async def accept_stop(message: types.Message, state: FSMContext):
     if message.text.lower() == 'yep':
-        partner_id = db.stop_room_chat(message.from_user.id)
+        # partner_id = db.stop_room_chat(message.from_user.id)
+        partner_id = db.get_partner_user_id(message.from_user.id)
+        db.stop_room_chat2(message.from_user.id, partner_id)
         banner = db.get_banner()
         ad = random.randint(1, 2)
         await state.reset_state()
@@ -141,6 +162,7 @@ async def accept_stop(message: types.Message, state: FSMContext):
         await bot.send_message(partner_id, MESSAGES['stop_2'] + (('\n\n' + banner) if banner and ad == 1 else ''))
     else:
         await BotStates.chat_process.set()
+        await message.answer(MESSAGES['continue_chat'])
 
 
 @dp.message_handler(content_types=['text', 'sticker', 'photo', 'video'], state=BotStates.chat_process)

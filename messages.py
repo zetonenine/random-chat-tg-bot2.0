@@ -73,9 +73,13 @@ match_1st_message = ('Match! Your partner is <b>{0}</b>\nWho will speak first? :
 
 match_2nd_message = 'Match! Your partner is <b>{0}</b>\nWho will speak first? :)'.format(random.choice(NAMES))
 
-no_partner_message = 'Unfortunately, all users are already busy. Try again'
+no_partner_message = 'Unfortunately, all users are already busy 🤷‍♀️ Try again'
+
+stop_searching = 'User search cancel'
 
 sure_stop_chat = 'Are you sure you want to end the conversation? Write <b>yep</b> to the chat'
+
+continue_chat = 'Cancel completion. You still have a companion 🤝'
 
 stop_1st_message = 'You had stopped the conversation..\nDo you want to /find new partner?'
 
@@ -116,9 +120,11 @@ MESSAGES = {
     'match_1': match_1st_message,
     'match_2': match_2nd_message,
     'no_partner_message': no_partner_message,
+    'stop_searching': stop_searching,
     'stop_1': stop_1st_message,
     'stop_2': stop_2nd_message,
     'sure_stop_chat': sure_stop_chat,
+    'continue_chat': continue_chat,
     'editor_mode': editor_mode_main,
     'editor_menu': editor_menu,
     'log_in_success': log_in_success,

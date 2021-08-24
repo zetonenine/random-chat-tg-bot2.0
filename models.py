@@ -69,6 +69,7 @@ class Users(Base):
         self.user_id = user_id
 
 
+# убрать эту таблицу оставив только кэш
 class Connects(Base):
 
     __tablename__ = 'connects'
@@ -136,8 +137,11 @@ class Database:
                     Connects.user_id != user_id,
                     Connects.partner_user_id == None
                 ).first().user_id
+
+                # убрать эти запроса возвращая только partner_id для кэша
                 session.query(Connects).filter(Connects.user_id == user_id).update({Connects.partner_user_id: free})
                 session.query(Connects).filter(Connects.user_id == free).update({Connects.partner_user_id: user_id})
+
             except:
                 free = None
 
@@ -147,16 +151,13 @@ class Database:
     def disconnect_users(user_id):
         with create_session() as session:
             free = session.query(Connects).filter(Connects.user_id == user_id).first().partner_user_id
+
+            # убрать эти запроса возвращая только partner_id для кэша
             session.query(Connects).filter(Connects.user_id == user_id).delete()
             try:
                 session.query(Connects).filter(Connects.user_id == free).delete()
             except:
                 None
-            # добавление кол-ва законченных диалогов
-            # user = session.query(Users).filter(Users.user_id == user_id).first()
-            # par_user = session.query(Users).filter(Users.user_id == free).first()
-            # user.showing += 1
-            # par_user.showing += 1
 
         return free
 
@@ -172,12 +173,6 @@ class Database:
         with create_session() as session:
             banners = session.query(Commercial.text).all()
         return random.choice(banners)[0] if banners else ''
-
-    @staticmethod
-    def get_partner_user_id(user_id):
-        with create_session() as session:
-            user_id = session.query(Connects).filter(Connects.user_id == user_id).first().partner_user_id
-        return user_id
 
     @staticmethod
     def show_commercial():
