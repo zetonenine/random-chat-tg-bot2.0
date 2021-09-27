@@ -75,7 +75,7 @@ match_2nd_message = 'Match! Your partner is <b>{0}</b>\nWho will speak first? :)
 
 no_partner_message = 'Unfortunately, all users are already busy 🤷‍♀️ Try again'
 
-stop_searching = 'User search cancel'
+stop_searching = 'User search cancel. If you want try again, press /find'
 
 sure_stop_chat = 'Are you sure you want to end the conversation? Write <b>yep</b> to the chat'
 
@@ -87,13 +87,15 @@ stop_2nd_message = 'Partner has stopped the conversation..\nDo you want to /find
 
 editor_mode_main = 'Enter login and password:'
 
-editor_menu = 'You entered editor mode. What are you going to do?\n/show_banners\n/add_new_banner\n/del_banner\n/quit'
+editor_menu = 'You entered editor mode. What are you going to do?\n/show_banners\n/add_new_banner\n/del_banner\n/add_role\n/del_role\n/quit'
 
 log_in_success = 'Welcome home!'
 
 log_in_unsuccess = "Wrong login or password"
 
 stop_editor_mode = 'You logged out from editor mode'
+
+stop_moderator_mode = 'You logged out from moderator mode'
 
 empty_banners = "There is no commercials"
 
@@ -110,6 +112,31 @@ error_id = "An error occurred when specifying an identifier. Try again: write ju
 banner_was_delete = "Commercial was removed successfully. ID "
 
 banner_was_not_delete = "No commercial with ID "
+
+add_new_role = 'To add new role, send me: login, password, role'
+
+role_was_added = 'New role was added'
+
+role_wasnt_added = 'Something going wrong, try again'
+
+choose_role_to_del = 'Choose role id to delete:'
+
+no_roles_to_del = 'There is no roles to delete'
+
+role_was_deleted = 'Role was deleted successfully'
+
+role_wasnt_deleted = "Role wasn't deleted"
+
+moderator_menu = 'You entered editor mode. What are you going to do?\n/most_reports_users\n'
+
+choose_messages_to_check = 'Choose reports messages to check:'
+
+messages_of_reports = 'That report include messages:'
+
+choose_punishment = 'Choose punishment or scroll up to check other reports'
+
+ban_user_answer = 'You were banned for not following the rules for using the bot. Until unbanned: '
+
 
 MESSAGES = {
     "start": start_message,
@@ -131,6 +158,7 @@ MESSAGES = {
     'log_in_unsuccess': log_in_unsuccess,
     'empty_banners': empty_banners,
     'stop_editor_mode': stop_editor_mode,
+    'stop_moderator_mode': stop_moderator_mode,
     'choose_banner_to_del': choose_banner_to_del,
     'error_id': error_id,
     'banner_was_added': banner_was_added,
@@ -138,7 +166,18 @@ MESSAGES = {
     'banner_was_delete': banner_was_delete,
     'banner_was_not_delete': banner_was_not_delete,
     'send_new_banner': send_new_banner,
-
+    'add_new_role': add_new_role,
+    'role_was_added': role_was_added,
+    'role_wasnt_added': role_wasnt_added,
+    'choose_role_to_del': choose_role_to_del,
+    'no_roles_to_del': no_roles_to_del,
+    'role_was_deleted': role_was_deleted,
+    'role_wasnt_deleted': role_wasnt_deleted,
+    'moderator_menu': moderator_menu,
+    'choose_messages_to_check': choose_messages_to_check,
+    'messages_of_reports': messages_of_reports,
+    'choose_punishment': choose_punishment,
+    'ban_user_answer': ban_user_answer,
 }
 
 

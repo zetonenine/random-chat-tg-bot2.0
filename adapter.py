@@ -5,7 +5,6 @@ from cache import Cache
 logging.basicConfig(level=logging.INFO)
 
 
-
 class DataInterface(Database, Cache):
 
     def count_users(self):
@@ -33,6 +32,10 @@ class DataInterface(Database, Cache):
         self.add_connects_cache(user_id, partner_id)
         return partner_id
 
+    def send_report(self, user_id, partner_id, reason, messages):
+        pass
+        return self.insert_report_to_Reports(partner, reason, messages)
+
     def stop_room_chat(self, user_id):
         partner_id = self.disconnect_users(user_id)
         self.rem_connects_cache(user_id, partner_id)
@@ -48,6 +51,9 @@ class DataInterface(Database, Cache):
     def stop_searching2(self, user_id):
         return self.rem_user_from_order(user_id)
 
+    def login_check(self, login):
+        return self.get_role_by_login(login)
+
     def get_banner(self):
         return self.get_random_text_from_commercial()
 
@@ -62,3 +68,24 @@ class DataInterface(Database, Cache):
 
     def remove_commercial_text(self, id):
         return self.del_commercial(id)
+
+    def add_new_role(self, login, password, role):
+        return self.insert_into_Roles(login, password, role)
+
+    def show_roles(self):
+        return self.get_roles_from_Roles()
+
+    def del_role(self, role_id):
+        return self.del_role_from_Roles(role_id)
+
+    def most_reports_users(self):
+        return self.get_users_order_by_amount_reports()
+
+    def get_reports_messages(self, reports_id):
+        return self.get_reports_by_ids(reports_id)
+
+    def ban_user(self, user_id):
+        pass
+
+    def unban_user(self, user_id):
+        pass
