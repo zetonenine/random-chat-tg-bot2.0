@@ -3,6 +3,7 @@ import functools
 import contextlib
 import datetime
 from inspect import signature
+from typing import Optional
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, MetaData, JSON, ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
@@ -74,22 +75,26 @@ class Users(Base):
 
 
 class Reports(Base):
-
     __tablename__ = 'reports'
 
     id = Column(Integer, primary_key=True)
-    reason = Column(String, nullable=False)
-    messages = Column(String, nullable=False)
-
-    users = relationship('Users', secondary='users_reports_relation')
+    user_id = Column(Integer, nullable=False)
+    user_by = Column(Integer)
+    reason = Column(String)
+    message = Column(String, nullable=False)
+    date = Column(DateTime, default=datetime.datetime.now())
 
     def __init__(
             self,
-            reason: str,
-            messages: str
+            user_id: int,
+            user_by: int,
+            message: str,
+            reason: Optional[str] = None,
     ):
+        self.user_id = user_id
+        self.user_by = user_by
         self.reason = reason
-        self.messages = messages
+        self.message = message
 
 
 class UsersReportsRelation(Base):
@@ -230,11 +235,6 @@ class Database:
         return free
 
     @staticmethod
-    def insert_report_to_Reports(user_id, reason, messages):
-        with create_session() as session:
-            report = Reports(user_id=user_id, reason=reason, messages=messages)
-
-    @staticmethod
     def remove_user_from_connects(user_id):
         with create_session() as session:
             res = session.query(Connects).filter(Connects.user_id == user_id).delete()
@@ -297,6 +297,24 @@ class Database:
         with create_session() as session:
             res = session.query(Users.id, Users.reports_amount, Users.reports).order_by(Users.reports_amount.desc()).limit(5)
         return res
+
+    @staticmethod
+    def insert_report_into_Reports(attrs):
+        with create_session() as session:
+            if attrs['report_id']:
+                report = session.query(Reports).filter(Reports.id == attrs['report_id']).first()
+                report.reason = attrs['reason']
+                session.merge(report)
+                return report.message
+            else:
+                report = Reports(
+                    user_id=attrs['user_id'],
+                    user_by=attrs['user_by'],
+                    message=attrs['message']
+                )
+                session.add(report)
+                session.flush()
+                return report.id
 
     @staticmethod
     def get_reports_by_ids(reports_id):

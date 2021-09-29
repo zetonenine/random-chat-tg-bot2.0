@@ -32,10 +32,6 @@ class DataInterface(Database, Cache):
         self.add_connects_cache(user_id, partner_id)
         return partner_id
 
-    def send_report(self, user_id, partner_id, reason, messages):
-        pass
-        return self.insert_report_to_Reports(partner, reason, messages)
-
     def stop_room_chat(self, user_id):
         partner_id = self.disconnect_users(user_id)
         self.rem_connects_cache(user_id, partner_id)
@@ -83,6 +79,9 @@ class DataInterface(Database, Cache):
 
     def get_reports_messages(self, reports_id):
         return self.get_reports_by_ids(reports_id)
+
+    def add_report(self, attrs):
+        return self.insert_report_into_Reports(attrs)
 
     def ban_user(self, user_id):
         pass

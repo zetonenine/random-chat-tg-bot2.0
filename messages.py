@@ -81,6 +81,10 @@ sure_stop_chat = 'Are you sure you want to end the conversation? Write <b>yep</b
 
 continue_chat = 'Cancel completion. You still have a companion 🤝'
 
+report_accepted = 'Your report has been accepted. Thank you for making the community a better place.'
+
+report_explain = 'To submit a report, select an inappropriate message to reply and text /report.'
+
 stop_1st_message = 'You had stopped the conversation..\nDo you want to /find new partner?'
 
 stop_2nd_message = 'Partner has stopped the conversation..\nDo you want to /find new partner?'
@@ -148,6 +152,8 @@ MESSAGES = {
     'match_2': match_2nd_message,
     'no_partner_message': no_partner_message,
     'stop_searching': stop_searching,
+    'report_accepted': report_accepted,
+    'report_explain': report_explain,
     'stop_1': stop_1st_message,
     'stop_2': stop_2nd_message,
     'sure_stop_chat': sure_stop_chat,

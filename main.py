@@ -17,12 +17,12 @@ from messages import MESSAGES
 from utils import BotStates, ChatState, EditorMode, ModeratorMode, ActiveState, BanState
 from adapter import DataInterface
 from models import initdb
-from main_logic import add_user, find_user, stop_room_chat, get_partner_id, send_report, check_partner_appearance, stop_searching_partner, start_room_chat, get_tg_banner
+from main_logic import add_user, find_user, stop_room_chat, send_report, get_partner_id, send_report, check_partner_appearance, stop_searching_partner, start_room_chat, get_tg_banner
 
 
 initdb()
 
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
 
@@ -115,6 +115,7 @@ async def voice_messages_sender(message: types.voice):
     """Обработчик войсов, пересылка сообщения если чат установлен, и ответ, если чата нет"""
 
     partner_id = get_partner_id(message.from_user.id)
+    print(message.voice.file_id)
     await bot.send_voice(partner_id, message.voice.file_id)
     log.info(f'User {message.from_user.id} sent voice to user {partner_id}. Voice_id: {message.voice.values["file_id"]}')
 
@@ -122,28 +123,32 @@ async def voice_messages_sender(message: types.voice):
 @dp.message_handler(commands=['report'], state=ChatState.default)  # ChatMode()
 async def report(message: types.Message, state: FSMContext):
     # keyboards.py
-    inline_btn_1 = InlineKeyboardButton('Оскорбительное поведение', callback_data='btn.rude')
-    inline_btn_2 = InlineKeyboardButton('Не использует английский язык', callback_data='btn.not_english')
-    inline_kb = InlineKeyboardMarkup().add(inline_btn_1, inline_btn_2)
-    await message.reply("Select the reason for the report", reply_markup=inline_kb)
+    if message.reply_to_message:
+        if message.reply_to_message.voice:
+            report_id = await send_report(
+                message.reply_to_message.from_user.id,
+                message.from_user.id,
+                message.reply_to_message.voice.file_id
+            )
+            inline_btn_1 = InlineKeyboardButton('Оскорбительное поведение', callback_data=f'btn.rude.{report_id}')
+            inline_btn_2 = InlineKeyboardButton('Не использует английский язык', callback_data=f'btn.not_english.{report_id}')
+            inline_kb = InlineKeyboardMarkup().add(inline_btn_1, inline_btn_2)
+            await message.reply("Select the reason for the report", reply_markup=inline_kb)
+        else:
+            await message.reply('This is not a voice')
+    else:
+        await message.reply(MESSAGES['report_explain'])
 
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('btn'), state=ChatState) # ChatMode()
 async def report_callback_button(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id)
-    reason = callback_query.data.split('.')[-1]
-    messages = []
+    _, reason, report_id = callback_query.data.split('.')
+    file_id = await send_report(report_id=report_id, reason=reason)
 
-    # Реализовать логику получения id последних сообщенинй от partner_id
-    await send_report(callback_query.from_user.id, partner_id, reason, messages)
-
-    # логика получения messages
-    if reason == 'rude':
-        await bot.send_message(callback_query.from_user.id, text='Нажата вторая кнопка')
-        # db.send_report(user_id, reason, messages)
-    if code == 'not_engilsh':
-        await bot.send_message(callback_query.from_user.id, text='Нажата первая кнопка!')
-        # db.send_report(user_id, reason, messages)
+    # оставлю пока пересылку сообщения в бот
+    await bot.send_voice(chat_id=-1001540464961, voice=file_id)
+    await bot.send_message(callback_query.from_user.id, MESSAGES['report_accepted'])
     await bot.delete_message(callback_query.from_user.id, callback_query.message.message_id)
 
 

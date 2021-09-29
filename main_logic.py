@@ -73,11 +73,15 @@ async def start_room_chat(user_id):
         return partner_id
 
 
-async def send_report(user_id, partner_id, reason, messages):
-    if reason == 'rude':
-        db.send_report(user_id, partner_id, reason, messages)
-    elif reason == 'not_english':
-        db.send_report(user_id, partner_id, reason, messages)
+async def send_report(user_id=None, user_by=None, message=None, report_id=None, reason=None):
+    attrs = {}
+    attrs['report_id'] = report_id if report_id else ''
+    attrs['reason'] = reason if reason else ''
+    attrs['user_id'] = user_id if user_id else ''
+    attrs['user_by'] = user_by if user_by else ''
+    attrs['message'] = message if message else ''
+
+    return db.add_report(attrs)
 
 
 def remove_partner_id(user_id):
