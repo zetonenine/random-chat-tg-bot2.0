@@ -126,7 +126,6 @@ async def report(message: types.Message, state: FSMContext):
     if message.reply_to_message:
         if message.reply_to_message.voice:
             report_id = await send_report(
-                message.reply_to_message.from_user.id,
                 message.from_user.id,
                 message.reply_to_message.voice.file_id
             )

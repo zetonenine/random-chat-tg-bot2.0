@@ -78,20 +78,21 @@ class Reports(Base):
     __tablename__ = 'reports'
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, nullable=False)
     user_by = Column(Integer)
     reason = Column(String)
     message = Column(String, nullable=False)
     date = Column(DateTime, default=datetime.datetime.now())
 
+    user = relationship('Users', secondary="users_reports_relation")
+
     def __init__(
             self,
-            user_id: int,
             user_by: int,
             message: str,
             reason: Optional[str] = None,
+            user: Optional[Users] = None
     ):
-        self.user_id = user_id
+        self.user = user
         self.user_by = user_by
         self.reason = reason
         self.message = message
@@ -307,8 +308,9 @@ class Database:
                 session.merge(report)
                 return report.message
             else:
+                user = session.query(Users).filter(Users.user_id==attrs['user_id']).first()
                 report = Reports(
-                    user_id=attrs['user_id'],
+                    user=[user],
                     user_by=attrs['user_by'],
                     message=attrs['message']
                 )
