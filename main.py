@@ -17,7 +17,9 @@ from messages import MESSAGES
 from utils import BotStates, ChatState, EditorMode, ModeratorMode, ActiveState, BanState
 from adapter import DataInterface
 from models import initdb
-from main_logic import add_user, find_user, stop_room_chat, send_report, get_partner_id, send_report, check_partner_appearance, stop_searching_partner, start_room_chat, get_tg_banner
+from main_logic import get_role, remove_report, get_moderator_name, get_oldest_report, ban_user, add_user, find_user, \
+    stop_room_chat, send_report, get_partner_id, send_report, check_partner_appearance, stop_searching_partner, \
+    start_room_chat, get_tg_banner
 
 
 initdb()
@@ -33,8 +35,9 @@ db = DataInterface()
 
 LOGIN = 'admin'
 PASSWORD = 'password'
+my_user_id = 379096786
 try:
-    db.add_new_role(LOGIN, PASSWORD, 'Admin')
+    db.add_new_role(LOGIN, PASSWORD, 'Admin', my_user_id)
 except:
     None
 
@@ -207,15 +210,24 @@ async def login(message: types.Message):
 
 @dp.message_handler(content_types=types.ContentTypes.ANY, state=BotStates.login_process)
 async def check_login(message: types.Message, state: FSMContext):
-    login, password = message.text.split(' ')
-    db_login, db_password, db_role = db.login_check(login)
-    if login == db_login and password == db_password:
+    # await ActiveState.default.set()
+    try:
+        login, password = message.text.split(' ')
+    except:
+        await message.answer('Error')
+        await ActiveState.default.set()
+    db_login, db_password, db_role, db_user_id = db.login_check(login)
+
+    # Протестировать логику неправильного ввода в модераторский режим
+
+    if login == db_login and password == db_password and message.from_user.id == db_user_id:
         await message.answer(MESSAGES['log_in_success'])
         if db_role == 'Admin':
             await EditorMode.default.set()
             await menu_editor(message.from_user.id)
         elif db_role == 'Moderator':
             await ModeratorMode.default.set()
+            await menu_moderator(message.from_user.id)
 
         attempt = "successful"
     else:
@@ -225,9 +237,22 @@ async def check_login(message: types.Message, state: FSMContext):
     log.info(f'Attempt to log in editor mode was {attempt}. user_id:{message.from_user.id}')
 
 
-@dp.message_handler(commands=['menu'], state=EditorMode)
 async def menu_editor(user_id):
     await bot.send_message(user_id, MESSAGES['editor_menu'])
+
+
+@dp.message_handler(commands=['menu'], state=EditorMode)
+async def menu_editor_handler(message: types.Message):
+    await menu_editor(message.from_user.id)
+
+
+async def menu_moderator(user_id):
+    await bot.send_message(user_id, MESSAGES['moderator_menu'])
+
+
+@dp.message_handler(commands=['menu'], state=ModeratorMode)
+async def menu_moderator_handler(message: types.Message):
+    await menu_moderator(message.from_user.id)
 
 
 @dp.message_handler(commands=['show_banners'], state=EditorMode.default)
@@ -282,6 +307,102 @@ async def choose_banner_to_delete(message: types.Message, state: FSMContext):
     await menu_editor(message.from_user.id)
 
 
+async def ban_sender(user_id, ban, list=False):
+    try:
+        inline_kb = None
+        if not list:
+            btn = InlineKeyboardButton('Реабилитировать', callback_data=f'reban.{ban.id}')
+            inline_kb = InlineKeyboardMarkup().add(btn)
+        await bot.send_voice(
+                chat_id=user_id,
+                voice=ban.message_id,
+                caption=f"Ban ID: {ban.id}\n"
+                        f"Reason: {ban.reason}\n"
+                        f"Date: {ban.date}",
+                reply_markup=inline_kb if inline_kb else None
+            )
+    except:
+        await bot.send_message(user_id, 'Что-то пошло не так')
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('reban'), state=EditorMode)
+async def reban_handler(callback_query: types.CallbackQuery):
+    """
+    await callback_query.message.delete_reply_markup()
+    _, ban_id = callback_query.data.split('.')
+    try:
+        user_id = await reban_user(ban_id)
+        await bot.send_message(callback_query.from_user.id, f'Пользователь {user_id} реабилитирован')
+    except:
+        await bot.send_message(callback_query.from_user.id, 'Что-то пошло не так')
+    """
+
+
+@dp.message_handler(commands=['remove_ban'], state=EditorMode.default)
+async def ban_list(message: types.Message, state: FSMContext):
+    """
+     bans = await get_ban_list(): # все баны за последнюю неделю
+     message = ''
+     for ban in bans:
+        await ban_sender(message.from_user.id, ban, True)
+     """
+    pass
+
+
+@dp.message_handler(commands=['get_ban'], state=EditorMode.default)
+async def get_ban(message: types.Message, state: FSMContext):
+    """
+    inline_btn_1 = InlineKeyboardButton('ID', callback_data=f'byid')
+    inline_btn_2 = InlineKeyboardButton('Date', callback_data=f'bydate')
+    inline_kb = InlineKeyboardMarkup().add(inline_btn_1, inline_btn_2)
+        await bot.send_message(
+            message.from_user.id,
+            text='По какому атрибуту ищем?',
+            reply_markup=inline_kb
+        )
+    EditorMode.get_report_process.set()
+    """
+    pass
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('byid'), state=EditorMode.get_ban_process)
+async def get_ban_by_id(callback_query: types.CallbackQuery):
+    """
+    await EditorMode.get_ban_by_id_process.set()
+    await bot.send_message(callback_query.from_user.id, 'Напиши ID:')
+    """
+    pass
+
+
+@dp.message_handler(content_types=types.ContentTypes.ANY, state=EditorMode.get_ban_by_id_process)
+async def ban_by_id_handler(message: types.Message, state: FSMContext):
+    """
+    await EditorMode.default.set()
+    id = message.text
+    ban = await get_ban_by_id(id)
+    await ban_sender(message.from_user.id, ban)
+    """
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('bydate'), state=EditorMode.get_ban_process)
+async def get_ban_by_date(callback_query: types.CallbackQuery):
+    """
+        await EditorMode.get_ban_by_date_process.set()
+        await bot.send_message(callback_query.from_user.id, 'Напиши дату в формате 21.09:')
+        """
+    pass
+
+
+@dp.message_handler(content_types=types.ContentTypes.ANY, state=EditorMode.get_ban_by_date_process)
+async def ban_by_id_handler(message: types.Message, state: FSMContext):
+    """
+    await EditorMode.default.set()
+    date = message.text
+    ban = await get_ban_by_date(date)
+    await ban_sender(message.from_user.id, ban)
+    """
+
+
 @dp.message_handler(commands=['add_role'], state=EditorMode.default)
 async def add_new_role(message: types.Message, state: FSMContext):
     await EditorMode.add_role_process.set()
@@ -290,9 +411,9 @@ async def add_new_role(message: types.Message, state: FSMContext):
 
 @dp.message_handler(content_types=types.ContentTypes.ANY, state=EditorMode.add_role_process)
 async def get_info_new_role(message: types.Message, state: FSMContext):
-    login, password, role = message.text.split(' ')
     try:
-        db.add_new_role(login, password, role)
+        login, password, role, user_id = message.text.split(' ')
+        db.add_new_role(login, password, role, user_id)
         await message.answer(MESSAGES['role_was_added'])
     except:
         await message.answer(MESSAGES['role_wasnt_added'])
@@ -327,50 +448,204 @@ async def del_role(message: types.Message, state: FSMContext):
     await menu_editor(message.from_user.id)
 
 
-@dp.message_handler(commands=['menu'], state=ModeratorMode)
-async def menu_moderator(user_id):
-    await bot.send_message(user_id, MESSAGES['moderator_menu'])
+@dp.message_handler(commands=['reports'], state=ModeratorMode.default)
+async def show_report_handler(message: types.Message):
+    await show_report(message.from_user.id)
 
 
-@dp.message_handler(commands=['show_reports_users'], state=ModeratorMode.default)
-async def show_reports_users(message: types.Message, state: FSMContext):
-    query = db.most_reports_users()
-    users = ''
-    inline_kb = InlineKeyboardMarkup()
-    for i in enumerate(query):
-        users += f"{i[0]}. ID: {i[1][0]} - Reports: {i[1][1]}\n"
-        inline_kb.add(InlineKeyboardButton(text=f"{i[1][0]}",
-                                           callback_data=f"btn{i[1][2]}"))
+async def show_report(user_id):
+    """ Реализовавть функцию выдачи самого старого репорта
+    Логика обращения к БД
+    Получение: report_id, reason, message, date
 
-    await message.reply("Select user to check", reply_markup=inline_kb)
+    Выводится:
+        Report ID:
+        Reason:
+        Date:
+        voice_message
+        Кнопки: Наказать / Пропустить / Отмена
+        callback_data: chs.punish.<report_id> / chs.skip.<report_id> / chs.cancel.<report_id>
+    """
+    result = await get_oldest_report()  # сделать функцию
+
+    if result:
+        report_id, reason, message_id, date = result
+        msg = await bot.send_voice(
+            user_id,
+            message_id,
+            caption=f"Report ID: {report_id}\n"
+                    f"Reason: {reason}\n"
+                    f"Date: {date.strftime('%d %b %H:%M:%S')}"
+        )
+
+        inline_btn_1 = InlineKeyboardButton('Наказать', callback_data=f'chs.punish.{msg.message_id+1}.{report_id}')
+        inline_btn_2 = InlineKeyboardButton('Не наказывать', callback_data=f'chs.nopunish.{msg.message_id+1}.{report_id}')
+        inline_btn_3 = InlineKeyboardButton('Пропустить', callback_data=f'chs.skip.{msg.message_id+1}.{report_id}')
+        inline_kb = InlineKeyboardMarkup().add(inline_btn_1, inline_btn_2, inline_btn_3)
+        await bot.send_message(
+            user_id,
+            text='Что сделать с этим пользователем?',
+            reply_markup=inline_kb
+        )
+    else:
+        await bot.send_message(
+            user_id,
+            text='Пока нет заведённых репортов',
+        )
 
 
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('btn'), state=ModeratorMode)
-async def check_report_callback_button(callback_query: types.CallbackQuery):
-    await bot.answer_callback_query(callback_query.id)
-    reports_id = eval(callback_query.data[-1])
-    query = db.get_reports_messages(reports_id)
-    reports = ''
-    inline_kb = InlineKeyboardMarkup()
-    for i in enumerate(query):
-        reports += f"{i[0]}. Reason: {i[1][0]}\n"
-        inline_kb.add(InlineKeyboardButton(text=f"{reports_id[i[0]]}",
-                                           callback_data=f"msg{i[1][1]}"))
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('chs'), state=ModeratorMode)
+async def choose_punishment(callback_query: types.CallbackQuery):
 
-    await bot.send_message(callback_query.from_user.id, text=MESSAGES['choose_messages_to_check'], reply_markup=inline_kb)
+    """ Происходит проверка нажатой кнопки
+    if punish:
+        Activate state ModeratorMode.punishment
+        Выводится:
+            message: Выбери причину бана
+            button: Not english, Rude, Scam, etc.
+            callback_data: f'rsn.<last_message_id>/<report_id>/<reason>/'
+    elif skip:
+        Заглушка
+    elif cancel:
+        await menu_moderator(message.from_user.id)
+
+     """
+    await callback_query.message.delete_reply_markup()
+    _, action, msg_id, report_id = callback_query.data.split('.')
+    if action == 'punish':
+        # await ModeratorMode.punishment.set()
+        inline_btn_1 = InlineKeyboardButton('Not English', callback_data=f'rsn.{msg_id}.{report_id}.noeng')
+        inline_btn_2 = InlineKeyboardButton('Rude', callback_data=f'rsn.{msg_id}.{report_id}.rude')
+        inline_btn_3 = InlineKeyboardButton('Scam', callback_data=f'rsn.{msg_id}.{report_id}.scam')
+        inline_btn_4 = InlineKeyboardButton('Other', callback_data=f'rsn.{msg_id}.{report_id}.other')
+
+        inline_kb = InlineKeyboardMarkup().add(inline_btn_1, inline_btn_2, inline_btn_3, inline_btn_4)
+        await bot.edit_message_text(
+            text='Какая причина бана?',
+            chat_id=callback_query.from_user.id,
+            message_id=msg_id,
+            reply_markup=inline_kb
+        )
+    elif action == 'nopunish':
+        # await ModeratorMode.punishment.set()
+        await remove_report(report_id)
+        await bot.delete_message(callback_query.from_user.id, msg_id)
+        await bot.send_message(callback_query.from_user.id, 'Нарушений не обнаружено, репорт удалён')
+        await show_report(callback_query.from_user.id)
+    elif action == 'skip':
+        """ 
+        Здесь можно реализовать логику получения репортов паком, и получать каждый через генератор
+        Как это было сделано в боте для повторения слов
+         """
+        await bot.delete_message(callback_query.from_user.id, int(msg_id)-1)
+        await bot.delete_message(callback_query.from_user.id, int(msg_id))
+        await bot.send_message(callback_query.from_user.id, 'Пока логика не реализована')
+        await show_report(callback_query.from_user.id)
 
 
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('msg'), state=ModeratorMode)
-async def show_messages(callback_query: types.CallbackQuery):
-    # await bot.answer_callback_query(callback_query.id)
-    messages_id = eval(callback_query.data[3:])
-    await bot.send_message(chat_id=callback_query.from_user.id, text=MESSAGES['messages_of_reports'])
-    for i in messages_id:
-        await bot.send_voice(chat_id=callback_query.from_user.id, voice=i)
-    button1 = KeyboardButton('Забанить')
-    button2 = KeyboardButton('Оставить')
-    greet_kb = ReplyKeyboardMarkup(resize_keyboard=True).add(button1, button2)
-    await bot.send_message(chat_id=callback_query.from_user.id, text=MESSAGES['choose_punishment'], reply_markup=greet_kb)
+@dp.callback_query_handler(
+    lambda c: c.data and c.data.startswith('rsn') or c.data.startswith('term'),
+    state=ModeratorMode
+)
+async def punishment_callbacks(callback_query: types.CallbackQuery):
+    """ Ловит callback данные от процесса вынесения наказания
+
+    data_type, data = callback_query.data.split('.')
+    # data_type: rsn/term,
+    # data: ID предыдущего сообщения, данные с предыдщих ответов, например: not_english
+    if rsn: # reason
+        await bot.delete_message(<chat_id>, data)
+        text: Выбери количество дней в бане?
+        buttons: 1, 3, 7, 30, 360, forever
+        callback_data: f'term.<last_message_id>/<report_id>/<reason>/<days>'
+
+    elif term: # reason
+        await bot.delete_message(<chat_id>, data)
+        text: Подтвердить наказание: Ban days: <data.days>, Reason: <data.reason>, Moderator: <Moderator.name>
+        buttons: Подтвердить
+        callback_data: f'pns.<last_message_id>/<report_id>/<reason>/<days>'
+
+     """
+    await callback_query.message.delete_reply_markup()
+    data_type = callback_query.data.split('.')[0]
+
+    if data_type == 'rsn':
+        data_type, msg_id, report_id, reason = callback_query.data.split('.')
+        btn_1 = InlineKeyboardButton('1', callback_data=f'term.{msg_id}.{report_id}.{reason}.1')
+        btn_2 = InlineKeyboardButton('3', callback_data=f'term.{msg_id}.{report_id}.{reason}.3')
+        btn_3 = InlineKeyboardButton('7', callback_data=f'term.{msg_id}.{report_id}.{reason}.7')
+        btn_4 = InlineKeyboardButton('30', callback_data=f'term.{msg_id}.{report_id}.{reason}.30')
+        btn_5 = InlineKeyboardButton('360', callback_data=f'term.{msg_id}.{report_id}.{reason}.360')
+        btn_6 = InlineKeyboardButton('Forever', callback_data=f'term.{msg_id}.{report_id}.{reason}.forever')
+
+        inline_kb = InlineKeyboardMarkup().add(btn_1, btn_2, btn_3, btn_4, btn_5, btn_6)
+        await bot.edit_message_text(
+            text='Выбери количество дней в бане?',
+            chat_id=callback_query.from_user.id,
+            message_id=msg_id,
+            reply_markup=inline_kb
+        )
+
+    elif data_type == 'term':
+        moderator = await get_moderator_name(callback_query.from_user.id)
+
+        data_type, msg_id, report_id, reason, term = callback_query.data.split('.')
+        btn_1 = InlineKeyboardButton('Подтвердить', callback_data=f'pns.{msg_id}.{report_id}.{reason}.{term}')
+        btn_2 = InlineKeyboardButton('Отменить', callback_data=f'pnsnot.{msg_id}.{report_id}.{reason}.{term}')
+        inline_kb = InlineKeyboardMarkup().add(btn_1, btn_2)
+
+        await bot.edit_message_text(
+            text=f"Наказание:\n"
+                 f"Ban days: {term}\n"
+                 f"Reason: {reason}\n"
+                 f"Moderator: {moderator[0] if moderator else 'None'}",
+            chat_id=callback_query.from_user.id,
+            message_id=msg_id,
+            reply_markup=inline_kb
+        )
+
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('pns'), state=ModeratorMode)
+async def punishment_confirm(callback_query: types.CallbackQuery):
+
+    """ Иммитация функции которая будет принимать ответ: что делать с пользователем
+    Это callback-data который в себе принесёт: report_id, terms (срок бана)
+
+    data_type, data = callback_query.data.split('.')
+    if pns: # reason
+        role = await get_role(message.from_user.id)
+        await ban_user(data.report_id, data.reason, data.days, role)
+        и дальше по написанной логике ниже
+    """
+
+    await callback_query.message.delete_reply_markup()
+    data_type, msg_id, report_id, reason, term = callback_query.data.split('.')
+
+    if data_type == 'pns':
+        try:
+            reason, user_id = await ban_user(report_id, 10)
+            # await state.storage.set_state(user=user_id, state=BanState.default.state)
+            patner_id = get_partner_id(user_id)
+            if patner_id:
+                await state.storage.set_state(user=patner_id, state=Ac.default.state)
+                await bot.send_message(partner_id, MESSAGES['stop_2'])
+                log.info(f'Users disconnects: {callback_query.from_user.id} and {partner_id}')
+            # добавить возможность пользователю со статусом Ban смотреть информацию о правилах использования бота
+            await bot.edit_message_text(
+                text='Пользователь был забанен',
+                chat_id=callback_query.from_user.id,
+                message_id=msg_id
+            )
+            # добавить в BanState
+            await bot.send_message(user_id, f'Вам ограничено использование бота на {term} дней по причине: {reason}')
+
+        except Exception as ex:
+            log.error(f'Не удалось добавить пользователя в Баню: {ex}')
+            await bot.send_message(callback_query.from_user.id, 'Не удалось забанить пользователя')
+
+    elif data_type == 'pnsnot':
+        await bot.delete_message(callback_query.from_user.id, msg_id)
+        await bot.send_message(callback_query.from_user.id, 'Наказание отменено')
 
 
 @dp.message_handler(commands=['quit'], state=ModeratorMode)

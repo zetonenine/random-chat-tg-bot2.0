@@ -5,7 +5,7 @@ import asyncio
 from messages import MESSAGES
 from utils import BotStates, ChatState, EditorMode, ModeratorMode, ActiveState, BanState
 from adapter import DataInterface
-from models import initdb
+from models import initdb, create_session
 from celery import Celery
 
 app = Celery('main', broker='redis://:@localhost:6379/1')
@@ -86,6 +86,39 @@ async def send_report(user_by=None, message=None, report_id=None, reason=None):
 
 def remove_partner_id(user_id):
     pass
+
+
+async def get_role(user_id):
+    return db.get_login_name_by_user_id(user_id)
+
+
+async def get_oldest_report():
+    """ Возвращает самый старый по date репорт """
+    return db.get_last_report_order_by_date()
+
+
+async def remove_report(report_id):
+    """ Удаляет репорт по id """
+    return db.remove_Report(report_id)
+
+
+async def get_moderator_name(user_id):
+    """ Возвращает имя модератор по user_id """
+    return db.get_login_from_role(user_id)
+
+
+async def ban_user(report_id, terms):
+    # with create_session():
+    """ Возможно стоит вынести сессиию на этот уровень """
+    try:
+        res = db.get_report(report_id)
+        user, user_id, reason, message = res[0][0], res[1], res[2], res[3]
+        db.add_Ban(user, reason, message, terms)
+        db.remove_Report(report_id)
+        return reason, user_id
+    except Exception as ex:
+        log.error(ex)
+        return
 
 
 async def get_tg_banner():

@@ -131,7 +131,7 @@ role_was_deleted = 'Role was deleted successfully'
 
 role_wasnt_deleted = "Role wasn't deleted"
 
-moderator_menu = 'You entered editor mode. What are you going to do?\n/most_reports_users\n'
+moderator_menu = 'You entered editor mode. What are you going to do?\n/reports\n/quit\n'
 
 choose_messages_to_check = 'Choose reports messages to check:'
 

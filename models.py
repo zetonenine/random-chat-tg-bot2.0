@@ -3,11 +3,12 @@ import functools
 import contextlib
 import datetime
 from inspect import signature
-from typing import Optional
+from typing import Optional, List
 
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, MetaData, JSON, ForeignKey, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, MetaData, JSON, ForeignKey, DateTime, desc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy import desc
 
 log = logging.getLogger("models.py")
 
@@ -17,6 +18,9 @@ engine = create_engine(path, echo=True)
 metadata = MetaData(bind=engine)
 Base = declarative_base(metadata=metadata)
 Session = sessionmaker(bind=engine)
+
+ACTIVE_USER = 'active'
+BANNED_USER = 'banned'
 
 
 def initdb():
@@ -56,26 +60,28 @@ def create_session():
 #     return wrapper
 
 
-class Users(Base):
+class User(Base):
 
-    __tablename__ = 'users'
+    __tablename__ = 'user'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, unique=True, nullable=False)
     showing = Column(Integer, default=0)
+    # status = Column(String, default=ACTIVE_USER)
 
-    reports = relationship('Reports', secondary='users_reports_relation')
-    # ban_id = relationship('BlackList', back_populates='blacklists')
+    report = relationship('Report', secondary='users_reports_relation')
+    ban = relationship('Ban', uselist=False, backref="user")
+    prev_ban = relationship('PrevBan', secondary='users_prev_bans_relation')
 
     def __init__(
             self,
-            user_id: int
+            user_id: int,
     ):
         self.user_id = user_id
 
 
-class Reports(Base):
-    __tablename__ = 'reports'
+class Report(Base):
+    __tablename__ = 'report'
 
     id = Column(Integer, primary_key=True)
     user_by = Column(Integer)
@@ -83,14 +89,14 @@ class Reports(Base):
     message = Column(String, nullable=False)
     date = Column(DateTime, default=datetime.datetime.now())
 
-    user = relationship('Users', secondary="users_reports_relation")
+    user = relationship('User', secondary="users_reports_relation")
 
     def __init__(
             self,
             user_by: int,
             message: str,
             reason: Optional[str] = None,
-            user: Optional[Users] = None
+            user=[]  # type: List[User]
     ):
         self.user = user
         self.user_by = user_by
@@ -102,25 +108,69 @@ class UsersReportsRelation(Base):
     __tablename__ = 'users_reports_relation'
 
     id = Column(Integer, primary_key=True)
-    users_id = Column(Integer(), ForeignKey('users.id'), nullable=False)
-    reports_id = Column(Integer(), ForeignKey('reports.id'), nullable=False)
+    users_id = Column(Integer(), ForeignKey('user.id'), nullable=False)
+    reports_id = Column(Integer(), ForeignKey('report.id'), nullable=False)
 
 
-class BlackList(Base):
-    __tablename__ = 'blacklist'
+class Ban(Base):
+    __tablename__ = 'ban'
 
     id = Column(Integer, primary_key=True)
-    reason = Column(Integer, default=0)
-    date_ban = Column(DateTime, nullable=False)
-    date_unban = Column(DateTime, nullable=False)
+    reason = Column(String)
+    message = Column(String, nullable=False)
+    ban_date = Column(DateTime, default=datetime.datetime.today())
+    # moderator_name = Column(String)
+    unban_date = Column(DateTime)
 
-    # user_id = Column(Integer(), ForeignKey('users.id'))
+    user_id = Column(Integer, ForeignKey(User.id))
 
     def __init__(
             self,
-            reason: int
+            reason: str,
+            message: str,
+            # moderator_name: str,
+            unban_date: Optional[DateTime],
+            user: Optional[User]
     ):
         self.reason = reason
+        self.message = message,
+        # self.moderator_name = moderator_name,
+        self.unban_date = unban_date
+        self.user = user
+
+
+class PrevBan(Base):
+    __tablename__ = 'prev_ban'
+
+    id = Column(Integer, primary_key=True)
+    reason = Column(String)
+    message = Column(String, nullable=False)
+
+    user = relationship('User', secondary='users_prev_bans_relation')
+
+    def __init__(
+            self,
+            reason: str,
+            message: str,
+    ):
+        self.reason = reason
+        self.message = message
+
+
+class UsersPrevBansRelation(Base):
+    __tablename__ = 'users_prev_bans_relation'
+
+    id = Column(Integer, primary_key=True)
+    users_id = Column(Integer(), ForeignKey('user.id'), nullable=False)
+    prev_ban_id = Column(Integer(), ForeignKey('prev_ban.id'), nullable=False)
+
+
+class UsersBanListRelation(Base):
+    __tablename__ = 'users_bans_relation'
+
+    id = Column(Integer, primary_key=True)
+    users_id = Column(Integer(), ForeignKey('user.id'), nullable=False)
+    bans_id = Column(Integer(), ForeignKey('ban.id'), nullable=False)
 
 
 # убрать эту таблицу оставив только кэш
@@ -158,16 +208,19 @@ class Roles(Base):
     login = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)  # Посмотреть как спрятать данные
     role = Column(String, nullable=False)
+    user_id = Column(Integer, nullable=False)
 
     def __init__(
             self,
             login: str,
             password: str,
             role: str,
+            user_id: str
     ):
         self.login = login
         self.password = password
         self.role = role
+        self.user_id = user_id
 
 
 class Database:
@@ -179,20 +232,20 @@ class Database:
     @staticmethod
     def count_users_row():
         with create_session() as session:
-            result = session.query(Users).count()
+            result = session.query(User).count()
         return result
 
     @staticmethod
     def add_user_to_users(user_id):
         with create_session() as session:
-            user = Users(user_id=user_id)
+            user = User(user_id=user_id)
             result = session.add(user)
         return result
 
     @staticmethod
     def user_exists(user_id):
         with create_session() as session:
-            result = session.query(Users).filter(Users.user_id == user_id).first() is not None
+            result = session.query(User).filter(User.user_id == user_id).first() is not None
         return result
 
     @staticmethod
@@ -251,7 +304,7 @@ class Database:
     @staticmethod
     def get_role_by_login(login):
         with create_session() as session:
-            data = session.query(Roles.login, Roles.password, Roles.role).filter(Roles.login == login).all()
+            data = session.query(Roles.login, Roles.password, Roles.role, Roles.user_id).filter(Roles.login == login).all()
         return data[0]
 
     @staticmethod
@@ -275,9 +328,9 @@ class Database:
         return res
 
     @staticmethod
-    def insert_into_Roles(login, password, role):
+    def insert_into_Roles(login, password, role, user_id):
         with create_session() as session:
-            role = Roles(login, password, role)
+            role = Roles(login, password, role, user_id)
             session.add(role)
         return
 
@@ -294,22 +347,28 @@ class Database:
         return res
 
     @staticmethod
+    def get_role_login_by_user_id(user_id):
+        with create_session() as session:
+            role = session.query(Roles.login).filter(Roles.user_id == user_id).first()
+        return role
+
+    @staticmethod
     def get_users_order_by_amount_reports():
         with create_session() as session:
-            res = session.query(Users.id, Users.reports_amount, Users.reports).order_by(Users.reports_amount.desc()).limit(5)
+            res = session.query(User.id, User.reports_amount, User.reports).order_by(User.reports_amount.desc()).limit(5)
         return res
 
     @staticmethod
     def insert_report_into_Reports(attrs):
         with create_session() as session:
             if attrs['report_id']:
-                report = session.query(Reports).filter(Reports.id == attrs['report_id']).first()
+                report = session.query(Report).filter(Report.id == attrs['report_id']).first()
                 report.reason = attrs['reason']
                 session.merge(report)
                 return report.message
             else:
-                user = session.query(Users).filter(Users.user_id==attrs['user_id']).first()
-                report = Reports(
+                user = session.query(User).filter(User.user_id==attrs['user_id']).first()
+                report = Report(
                     user=[user],
                     user_by=attrs['user_by'],
                     message=attrs['message']
@@ -319,25 +378,52 @@ class Database:
                 return report.id
 
     @staticmethod
-    def get_reports_by_ids(reports_id):
+    def get_report_by_id2(report_id):
+        with create_session() as session:
+            q = session.query(Report).filter(Report.id == report_id).first()
+            res = [q.user, q.user[0].user_id, q.reason, q.message]
+        return res
+
+    @staticmethod
+    def get_report_by_id(reports_id):
         with create_session() as session:
             res = []
             for i in reports_id:
-                q = session.query(Reports.reason, Reports.messages).filter(Reports.id == i).first()
+                q = session.query(Report.reason, Report.messages).filter(Report.id == i).first()
                 res.append(q[0])
         return res
 
     @staticmethod
-    def insert_into_BlackList(user_id, reason):
+    def get_last_report_order_by_date():
         with create_session() as session:
-            ban = BlackList(reason=reason)
-            user = session.query(Users).filter(Users.user_id == user_id).first()[0]
-            ban.user_id = user
+            report = session.query(Report).order_by(desc(Report.date)).first()
+            result = report.id, report.reason, report.message, report.date
+        return result
+
+    @staticmethod
+    def insert_into_Ban(user, reason, message, terms):
+        with create_session() as session:
+            print(user)
+            unban_date = datetime.datetime.today()+datetime.timedelta(days=terms)
+            ban = Ban(reason=reason, message=message, unban_date=unban_date, user=user)
             session.add(ban)
         return
 
     @staticmethod
-    def del_row_from_BlackList(user_id):
+    def remove_report_from_Report(report_id):
         with create_session() as session:
-            user = session.query(Users).filter(Users.user_id == user_id).first()[0]
+            q = session.query(Report).filter(Report.id == report_id).first()
+            session.delete(q)
         return
+
+    @staticmethod
+    def del_row_from_Ban(user_id):
+        with create_session() as session:
+            user = session.query(User).filter(User.user_id == user_id).first()[0]
+        return
+
+    @staticmethod
+    def get_login_from_Role(user_id):
+        with create_session() as session:
+            login = session.query(Roles.login).filter(Roles.user_id == user_id).first()
+        return login

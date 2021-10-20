@@ -50,6 +50,9 @@ class DataInterface(Database, Cache):
     def login_check(self, login):
         return self.get_role_by_login(login)
 
+    def get_login_name_by_user_id(self, user_id):
+        return self.get_role_login_by_user_id(user_id)
+
     def get_banner(self):
         return self.get_random_text_from_commercial()
 
@@ -65,8 +68,8 @@ class DataInterface(Database, Cache):
     def remove_commercial_text(self, id):
         return self.del_commercial(id)
 
-    def add_new_role(self, login, password, role):
-        return self.insert_into_Roles(login, password, role)
+    def add_new_role(self, login, password, role, user_id):
+        return self.insert_into_Roles(login, password, role, user_id)
 
     def show_roles(self):
         return self.get_roles_from_Roles()
@@ -78,13 +81,25 @@ class DataInterface(Database, Cache):
         return self.get_users_order_by_amount_reports()
 
     def get_reports_messages(self, reports_id):
-        return self.get_reports_by_ids(reports_id)
+        return self.get_report_by_id(reports_id)
+
+    def get_login_from_role(self, user_id):
+        return self.get_login_from_Role(user_id)
 
     def add_report(self, attrs):
         return self.insert_report_into_Reports(attrs)
 
-    def ban_user(self, user_id):
-        pass
+    def get_report(self, report_id):
+        return self.get_report_by_id2(report_id)
+
+    def get_last_report(self):
+        return self.get_last_report_order_by_date()
+
+    def remove_Report(self, report_id):
+        return self.remove_report_from_Report(report_id)
+
+    def add_Ban(self, user, reason, message, terms):
+        return self.insert_into_Ban(user, reason, message, terms)
 
     def unban_user(self, user_id):
         pass

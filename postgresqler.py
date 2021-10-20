@@ -3,13 +3,31 @@ import psycopg2
 
 class BD:
 
-    def __init__(self, user="postgres", password="postgres", dbname="users", host="localhost"):
+    def __init__(self, user="postgres", password="postgres", dbname="postgres", host="localhost"):
         self.connection = psycopg2.connect(
             user=user,
             password=password,
             dbname=dbname,
             host=host)
         self.cursor = self.connection.cursor()
+
+    def create(self):
+        commands = (
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+                chat INTEGER NOT NULL,
+                partner_chat INTEGER,
+                status BOOLEAN DEFAULT FALSE
+                )
+            """
+        )    
+        with self.connection:
+            return self.cursor.execute(commands)
+
+    def count_user(self):
+        with self.connection:
+            return self.cursor.execute("SELECT COUNT(*) FROM users")
 
     def add_user(self, chatID, status=False):
         with self.connection:
@@ -20,7 +38,7 @@ class BD:
             self.cursor.execute("SELECT exists(SELECT 1 FROM users WHERE chat = (%s))", (chatID,))
             obj = self.cursor.fetchall()
             return obj[0][0]
-
+    
     def status_true(self, chatID, status=True):
         with self.connection:
             return self.cursor.execute("UPDATE users SET status = (%s) WHERE chat = (%s)", (status, chatID))
@@ -60,3 +78,6 @@ class BD:
             self.cursor.execute("SELECT partner_chat FROM users WHERE chat = (%s)", (chatID,))
             pcID = self.cursor.fetchall()
             return pcID[0][0]
+
+    def user_exists(self, id):
+        pass
