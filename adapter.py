@@ -101,5 +101,14 @@ class DataInterface(Database, Cache):
     def add_Ban(self, user, reason, message, terms):
         return self.insert_into_Ban(user, reason, message, terms)
 
-    def unban_user(self, user_id):
-        pass
+    def get_last_bans(self):
+        return self.get_bans_order_by_date()
+
+    def get_ban_by_id(self, ban_id):
+        return self.get_ban_by_id_from_Ban(ban_id)
+
+    def get_ban_by_date(self, date):
+        return self.get_ban_by_date_from_Ban(date)
+
+    def remove_ban(self, ban_id):
+        return self.remove_ban_from_Ban(ban_id)

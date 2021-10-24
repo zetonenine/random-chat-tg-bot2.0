@@ -1,11 +1,8 @@
 import logging
-import random
 import asyncio
+import datetime
 
-from messages import MESSAGES
-from utils import BotStates, ChatState, EditorMode, ModeratorMode, ActiveState, BanState
 from adapter import DataInterface
-from models import initdb, create_session
 from celery import Celery
 
 app = Celery('main', broker='redis://:@localhost:6379/1')
@@ -110,18 +107,44 @@ async def get_moderator_name(user_id):
 async def ban_user(report_id, terms):
     # with create_session():
     """ Возможно стоит вынести сессиию на этот уровень """
-    try:
-        res = db.get_report(report_id)
-        user, user_id, reason, message = res[0][0], res[1], res[2], res[3]
-        db.add_Ban(user, reason, message, terms)
-        db.remove_Report(report_id)
-        return reason, user_id
-    except Exception as ex:
-        log.error(ex)
-        return
+
+    res = db.get_report(report_id)
+    user, user_id, reason, message = res[0][0], res[1], res[2], res[3]
+    db.add_Ban(user, reason, message, terms)
+    db.remove_Report(report_id)
+    return reason, user_id
 
 
 async def get_tg_banner():
     return db.get_banner()
 
 
+async def get_bans_list():
+    """ Возвращает все баны полученные за последнии 7 дней """
+    return db.get_last_bans()
+
+
+async def get_ban_by_id(ban_id):
+    """ Возвращает бан объект по ID """
+    try:
+        ban_id = int(ban_id)
+    except:
+        return False
+    return db.get_ban_by_id(ban_id)
+
+
+async def get_ban_by_date(ban_date):
+    """ Возвращает бан объект по Date """
+    splited_date = ban_date.split('.')
+    if not 2 < len(splited_date) < 4:
+        return False
+    for i in splited_date:
+        if len(i) != 2:
+            return False
+    date = datetime.datetime.strptime(ban_date, '%d.%m.%y')
+    return db.get_ban_by_date(date)
+
+
+async def unban_by_user_id(ban_id):
+    """ Удаляет бан по id """
+    return db.remove_ban(ban_id)

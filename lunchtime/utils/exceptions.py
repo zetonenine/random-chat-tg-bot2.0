@@ -1,0 +1,4 @@
+
+
+class UserAlreadyBanned(Exception):
+    pass

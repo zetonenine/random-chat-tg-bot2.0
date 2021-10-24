@@ -1,14 +1,14 @@
 import logging
-import functools
 import contextlib
 import datetime
-from inspect import signature
 from typing import Optional, List
 
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, MetaData, JSON, ForeignKey, DateTime, desc
+from sqlalchemy import create_engine, Column, Integer, String, MetaData, ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import desc
+
+from lunchtime.utils.exceptions import UserAlreadyBanned
 
 log = logging.getLogger("models.py")
 
@@ -66,8 +66,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, unique=True, nullable=False)
-    showing = Column(Integer, default=0)
-    # status = Column(String, default=ACTIVE_USER)
+    status = Column(String, default=ACTIVE_USER)
 
     report = relationship('Report', secondary='users_reports_relation')
     ban = relationship('Ban', uselist=False, backref="user")
@@ -122,7 +121,7 @@ class Ban(Base):
     # moderator_name = Column(String)
     unban_date = Column(DateTime)
 
-    user_id = Column(Integer, ForeignKey(User.id))
+    user_id = Column(Integer, ForeignKey(User.id), unique=True)
 
     def __init__(
             self,
@@ -403,17 +402,23 @@ class Database:
     @staticmethod
     def insert_into_Ban(user, reason, message, terms):
         with create_session() as session:
-            print(user)
+            if session.query(Ban).filter(Ban.user_id == user.id).first():
+                raise UserAlreadyBanned
             unban_date = datetime.datetime.today()+datetime.timedelta(days=terms)
             ban = Ban(reason=reason, message=message, unban_date=unban_date, user=user)
             session.add(ban)
+            user.status = BANNED_USER
+            session.merge(user)
         return
 
     @staticmethod
     def remove_report_from_Report(report_id):
         with create_session() as session:
             q = session.query(Report).filter(Report.id == report_id).first()
-            session.delete(q)
+            reports = q.user[0].report
+            # q = session.query(Report).filter(Report.id == report_id).first()
+            for report in reports:
+                session.delete(report)
         return
 
     @staticmethod
@@ -427,3 +432,48 @@ class Database:
         with create_session() as session:
             login = session.query(Roles.login).filter(Roles.user_id == user_id).first()
         return login
+
+    @staticmethod
+    def get_bans_order_by_date():
+        week_ago = datetime.datetime.today() - datetime.timedelta(days=7)
+        with create_session() as session:
+            bans = session.query(
+                Ban.id,
+                Ban.reason,
+                Ban.message,
+                Ban.ban_date,
+            ).order_by(desc(Ban.ban_date)).filter(Ban.ban_date > week_ago).all()
+        return bans
+
+    @staticmethod
+    def get_ban_by_id_from_Ban(ban_id):
+        with create_session() as session:
+            ban = session.query(
+                Ban.id,
+                Ban.reason,
+                Ban.message,
+                Ban.ban_date,
+            ).filter(Ban.id == ban_id).first()
+        return ban
+
+    @staticmethod
+    def get_ban_by_date_from_Ban(date):
+        next_day = datetime.datetime.today() + datetime.timedelta(days=1)
+        with create_session() as session:
+            ban = session.query(
+                Ban.id,
+                Ban.reason,
+                Ban.message,
+                Ban.ban_date,
+            ).filter(Ban.ban_date >= date).filter(Ban.ban_date <= next_day).all()
+        return ban
+
+    @staticmethod
+    def remove_ban_from_Ban(ban_id):
+        with create_session() as session:
+            q = session.query(Ban).filter(Ban.id == ban_id).first()
+            session.delete(q)
+            user = session.query(User).filter(User.user_id == q.user_id).first()
+            user.status = BANNED_USER
+            session.merge(user)
+        return

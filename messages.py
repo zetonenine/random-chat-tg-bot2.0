@@ -91,7 +91,9 @@ stop_2nd_message = 'Partner has stopped the conversation..\nDo you want to /find
 
 editor_mode_main = 'Enter login and password:'
 
-editor_menu = 'You entered editor mode. What are you going to do?\n/show_banners\n/add_new_banner\n/del_banner\n/add_role\n/del_role\n/quit'
+editor_menu = 'You entered editor mode. What are you going to do?\n' \
+              '/show_banners\n/add_new_banner\n/del_banner\n/add_role\n' \
+              '/del_role\n/last_bans\n/get_ban\n/quit'
 
 log_in_success = 'Welcome home!'
 
