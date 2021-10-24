@@ -98,8 +98,8 @@ class DataInterface(Database, Cache):
     def remove_Report(self, report_id):
         return self.remove_report_from_Report(report_id)
 
-    def add_Ban(self, user, user_id, reason, message, terms):
-        return self.insert_into_Ban(user, user_id, reason, message, terms)
+    def add_Ban(self, user, user_id, reason, message, terms, report_id):
+        return self.insert_into_Ban(user, user_id, reason, message, terms, report_id)
 
     def get_last_bans(self):
         return self.get_bans_order_by_date()

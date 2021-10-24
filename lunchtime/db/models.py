@@ -402,7 +402,8 @@ class Database:
         return result
 
     @staticmethod
-    def insert_into_Ban(user, user_id, reason, message, terms):
+    def insert_into_Ban(user, user_id, reason, message, terms, report_id):
+        """ Добавляет новый объект Ban, удаляет все объекты Report связанные с данным пользователем """
         with create_session() as session:
             q = session.query(Ban).filter(Ban.user_id == user_id).first()
             if q:
@@ -412,6 +413,10 @@ class Database:
             session.add(ban)
             user.status = BANNED_USER
             session.merge(user)
+            q = session.query(Report).filter(Report.id == report_id).first()
+            reports = q.user[0].report
+            for report in reports:
+                session.delete(report)
         return
 
     @staticmethod

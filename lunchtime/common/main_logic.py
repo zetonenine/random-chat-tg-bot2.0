@@ -109,9 +109,8 @@ async def ban_user(report_id, terms):
 
     res = db.get_report(report_id)
     user_obj, user_id, reason, message = res
-    db.add_Ban(user_obj[0], user_id, reason, message, terms)
-    db.remove_Report(report_id)
-    return reason, tg_user_id
+    db.add_Ban(user_obj[0], user_id, reason, message, terms, report_id)
+    return reason, user_id
 
 
 async def get_tg_banner():
