@@ -90,7 +90,7 @@ class DataInterface(Database, Cache):
         return self.insert_report_into_Reports(attrs)
 
     def get_report(self, report_id):
-        return self.get_report_by_id2(report_id)
+        return self.get_report_by_id(report_id)
 
     def get_last_report(self):
         return self.get_last_report_order_by_date()

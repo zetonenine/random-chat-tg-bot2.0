@@ -304,7 +304,7 @@ class Database:
     def get_role_by_login(login):
         with create_session() as session:
             data = session.query(Roles.login, Roles.password, Roles.role, Roles.user_id).filter(Roles.login == login).all()
-        return data[0]
+        return data
 
     @staticmethod
     def show_commercial():
@@ -377,19 +377,10 @@ class Database:
                 return report.id
 
     @staticmethod
-    def get_report_by_id2(report_id):
+    def get_report_by_id(report_id):
         with create_session() as session:
             q = session.query(Report).filter(Report.id == report_id).first()
             res = [q.user, q.user[0].user_id, q.reason, q.message]
-        return res
-
-    @staticmethod
-    def get_report_by_id(reports_id):
-        with create_session() as session:
-            res = []
-            for i in reports_id:
-                q = session.query(Report.reason, Report.messages).filter(Report.id == i).first()
-                res.append(q[0])
         return res
 
     @staticmethod

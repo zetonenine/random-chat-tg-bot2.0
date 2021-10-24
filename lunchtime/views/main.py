@@ -225,20 +225,27 @@ async def check_login(message: types.Message, state: FSMContext):
     except:
         await message.answer('Error')
         await ActiveState.default.set()
-    db_login, db_password, db_role, db_user_id = db.login_check(login)
+        return
+    result = db.login_check(login)
+    if result:
+        db_login, db_password, db_role, db_user_id = result[0]
 
     # Протестировать логику неправильного ввода в модераторский режим
 
-    if login == db_login and password == db_password and message.from_user.id == db_user_id:
-        await message.answer(MESSAGES['log_in_success'])
-        if db_role == 'Admin':
-            await EditorMode.default.set()
-            await menu_editor(message.from_user.id)
-        elif db_role == 'Moderator':
-            await ModeratorMode.default.set()
-            await menu_moderator(message.from_user.id)
+        if login == db_login and password == db_password and message.from_user.id == db_user_id:
+            await message.answer(MESSAGES['log_in_success'])
+            if db_role == 'Admin':
+                await EditorMode.default.set()
+                await menu_editor(message.from_user.id)
+            elif db_role == 'Moderator':
+                await ModeratorMode.default.set()
+                await menu_moderator(message.from_user.id)
 
-        attempt = "successful"
+            attempt = "successful"
+        else:
+            await message.answer(MESSAGES['log_in_unsuccess'])
+            await ActiveState.default.set()
+            attempt = "unsuccessful"
     else:
         await message.answer(MESSAGES['log_in_unsuccess'])
         await ActiveState.default.set()
@@ -500,19 +507,8 @@ async def show_report_handler(message: types.Message):
 
 
 async def show_report(user_id):
-    """ Реализовавть функцию выдачи самого старого репорта
-    Логика обращения к БД
-    Получение: report_id, reason, message, date
-
-    Выводится:
-        Report ID:
-        Reason:
-        Date:
-        voice_message
-        Кнопки: Наказать / Пропустить / Отмена
-        callback_data: chs.punish.<report_id> / chs.skip.<report_id> / chs.cancel.<report_id>
-    """
-    result = await get_oldest_report()  # сделать функцию
+    """  """
+    result = await get_oldest_report()
 
     if result:
         report_id, reason, message_id, date = result
@@ -542,20 +538,8 @@ async def show_report(user_id):
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('chs'), state=ModeratorMode)
 async def choose_punishment(callback_query: types.CallbackQuery):
+    """  """
 
-    """ Происходит проверка нажатой кнопки
-    if punish:
-        Activate state ModeratorMode.punishment
-        Выводится:
-            message: Выбери причину бана
-            button: Not english, Rude, Scam, etc.
-            callback_data: f'rsn.<last_message_id>/<report_id>/<reason>/'
-    elif skip:
-        Заглушка
-    elif cancel:
-        await menu_moderator(message.from_user.id)
-
-     """
     await callback_query.message.delete_reply_markup()
     _, action, msg_id, report_id = callback_query.data.split('.')
     if action == 'punish':
@@ -594,24 +578,7 @@ async def choose_punishment(callback_query: types.CallbackQuery):
     state=ModeratorMode
 )
 async def punishment_callbacks(callback_query: types.CallbackQuery):
-    """ Ловит callback данные от процесса вынесения наказания
-
-    data_type, data = callback_query.data.split('.')
-    # data_type: rsn/term,
-    # data: ID предыдущего сообщения, данные с предыдщих ответов, например: not_english
-    if rsn: # reason
-        await bot.delete_message(<chat_id>, data)
-        text: Выбери количество дней в бане?
-        buttons: 1, 3, 7, 30, 360, forever
-        callback_data: f'term.<last_message_id>/<report_id>/<reason>/<days>'
-
-    elif term: # reason
-        await bot.delete_message(<chat_id>, data)
-        text: Подтвердить наказание: Ban days: <data.days>, Reason: <data.reason>, Moderator: <Moderator.name>
-        buttons: Подтвердить
-        callback_data: f'pns.<last_message_id>/<report_id>/<reason>/<days>'
-
-     """
+    """ Ловит callback данные от процесса вынесения наказания """
     await callback_query.message.delete_reply_markup()
     data_type = callback_query.data.split('.')[0]
 
@@ -656,12 +623,6 @@ async def punishment_confirm(callback_query: types.CallbackQuery):
 
     """ Иммитация функции которая будет принимать ответ: что делать с пользователем
     Это callback-data который в себе принесёт: report_id, terms (срок бана)
-
-    data_type, data = callback_query.data.split('.')
-    if pns: # reason
-        role = await get_role(message.from_user.id)
-        await ban_user(data.report_id, data.reason, data.days, role)
-        и дальше по написанной логике ниже
     """
 
     await callback_query.message.delete_reply_markup()
