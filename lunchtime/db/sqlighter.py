@@ -1,5 +1,5 @@
 import sqlite3
-from redis_file import Redis, redis_add_new_user, redis_add_order
+from lunchtime.db.cache import redis_add_new_user, redis_add_order
 
 class SQLighter:
 

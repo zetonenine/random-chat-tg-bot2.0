@@ -1,4 +1,4 @@
-from main_logic import log
+from lunchtime.common.main_logic import log
 import random
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -11,11 +11,11 @@ from celery import Celery
 
 app = Celery('main', broker='redis://:@localhost:6379/1')
 
-from messages import MESSAGES
+from lunchtime.utils.messages import MESSAGES
 from lunchtime.utils.states import BotStates, ChatState, EditorMode, ModeratorMode, ActiveState, BanState
-from adapter import DataInterface
-from models import initdb
-from main_logic import remove_report, get_moderator_name, get_oldest_report, ban_user, add_user, stop_room_chat, \
+from lunchtime.db.adapter import DataInterface
+from lunchtime.db.models import initdb
+from lunchtime.common.main_logic import remove_report, get_moderator_name, get_oldest_report, ban_user, add_user, stop_room_chat, \
     get_partner_id, send_report, stop_searching_partner, \
     start_room_chat, get_tg_banner, get_bans_list, get_ban_by_id, get_ban_by_date, unban_by_user_id
 from lunchtime.utils.exceptions import UserAlreadyBanned
@@ -142,24 +142,25 @@ async def report(message: types.Message, state: FSMContext):
 
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('btn'), state=ChatState) # ChatMode()
-async def report_callback_button(callback_query: types.CallbackQuery):
+async def report_callback_button(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback_query.id)
     _, reason, report_id = callback_query.data.split('.')
     file_id = await send_report(report_id=report_id, reason=reason)
+    user_id = callback_query.from_user.id
 
     # оставлю пока пересылку сообщения в бот
     await bot.send_voice(chat_id=-1001540464961, voice=file_id)
-    await bot.send_message(callback_query.from_user.id, MESSAGES['report_accepted'])
-    await bot.delete_message(callback_query.from_user.id, callback_query.message.message_id)
+    await bot.send_message(user_id, MESSAGES['report_accepted'])
+    await bot.delete_message(user_id, callback_query.message.message_id)
 
-    partner_id = get_partner_id(message.from_user.id)
-    log.info(f'User {message.from_user.id} send report to user {partner_id}')
-    await stop_room_chat(message.from_user.id, partner_id)
+    partner_id = get_partner_id(user_id)
+    log.info(f'User {user_id} send report to user {partner_id}')
+    await stop_room_chat(user_id, partner_id)
     await ActiveState.default.set()
     await state.storage.set_state(user=partner_id, state=ActiveState.default.state)
-    await message.answer(MESSAGES['stop_1'])
+    await bot.send_message(user_id, MESSAGES['stop_1'])
     await bot.send_message(partner_id, MESSAGES['stop_2'])
-    log.info(f'Users disconnects: {message.from_user.id} and {partner_id}')
+    log.info(f'Users disconnects: {user_id} and {partner_id}')
 
 
 @dp.message_handler(commands=['stop'], state=ChatState.default) # ChatMode()
@@ -684,12 +685,12 @@ async def punishment_confirm(callback_query: types.CallbackQuery):
             # добавить в BanState
             await bot.send_message(user_id, f'Вам ограничено использование бота на {term} дней по причине: {reason}')
 
+        except UserAlreadyBanned:
+            await bot.send_message(callback_query.from_user.id, 'Пользователь уже находится в бане')
+
         except Exception as ex:
             log.error(f'Не удалось добавить пользователя в Баню: {ex}')
             await bot.send_message(callback_query.from_user.id, 'Не удалось забанить пользователя')
-
-        except UserAlreadyBanned:
-            await bot.send_message(partner_id, 'Пользователь уже находится в бане')
 
     elif data_type == 'pnsnot':
         await bot.delete_message(callback_query.from_user.id, msg_id)

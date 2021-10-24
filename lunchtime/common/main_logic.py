@@ -2,7 +2,7 @@ import logging
 import asyncio
 import datetime
 
-from adapter import DataInterface
+from lunchtime.db.adapter import DataInterface
 from celery import Celery
 
 app = Celery('main', broker='redis://:@localhost:6379/1')
@@ -105,14 +105,13 @@ async def get_moderator_name(user_id):
 
 
 async def ban_user(report_id, terms):
-    # with create_session():
     """ Возможно стоит вынести сессиию на этот уровень """
 
     res = db.get_report(report_id)
-    user, user_id, reason, message = res[0][0], res[1], res[2], res[3]
-    db.add_Ban(user, reason, message, terms)
+    user_obj, user_id, reason, message = res
+    db.add_Ban(user_obj[0], user_id, reason, message, terms)
     db.remove_Report(report_id)
-    return reason, user_id
+    return reason, tg_user_id
 
 
 async def get_tg_banner():

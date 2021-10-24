@@ -1,4 +1,8 @@
 
 
-class UserAlreadyBanned(Exception):
+class Error(Exception):
+    pass
+
+
+class UserAlreadyBanned(Error):
     pass

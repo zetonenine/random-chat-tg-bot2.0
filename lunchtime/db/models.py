@@ -121,7 +121,7 @@ class Ban(Base):
     # moderator_name = Column(String)
     unban_date = Column(DateTime)
 
-    user_id = Column(Integer, ForeignKey(User.id), unique=True)
+    user_id = Column(Integer, ForeignKey(User.user_id), unique=True)
 
     def __init__(
             self,
@@ -396,13 +396,16 @@ class Database:
     def get_last_report_order_by_date():
         with create_session() as session:
             report = session.query(Report).order_by(desc(Report.date)).first()
+            if not report:
+                return
             result = report.id, report.reason, report.message, report.date
         return result
 
     @staticmethod
-    def insert_into_Ban(user, reason, message, terms):
+    def insert_into_Ban(user, user_id, reason, message, terms):
         with create_session() as session:
-            if session.query(Ban).filter(Ban.user_id == user.id).first():
+            q = session.query(Ban).filter(Ban.user_id == user_id).first()
+            if q:
                 raise UserAlreadyBanned
             unban_date = datetime.datetime.today()+datetime.timedelta(days=terms)
             ban = Ban(reason=reason, message=message, unban_date=unban_date, user=user)
@@ -416,15 +419,8 @@ class Database:
         with create_session() as session:
             q = session.query(Report).filter(Report.id == report_id).first()
             reports = q.user[0].report
-            # q = session.query(Report).filter(Report.id == report_id).first()
             for report in reports:
                 session.delete(report)
-        return
-
-    @staticmethod
-    def del_row_from_Ban(user_id):
-        with create_session() as session:
-            user = session.query(User).filter(User.user_id == user_id).first()[0]
         return
 
     @staticmethod
