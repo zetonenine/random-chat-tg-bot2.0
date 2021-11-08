@@ -1,4 +1,3 @@
-from lunchtime.common.main_logic import log
 import random
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -9,7 +8,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from celery import Celery
 
-app = Celery('main', broker='redis://:@localhost:6379/1')
+
 
 from lunchtime.utils.messages import MESSAGES
 from lunchtime.utils.states import BotStates, ChatState, EditorMode, ModeratorMode, ActiveState, BanState
@@ -40,6 +39,7 @@ try:
 except:
     None
 
+app = Celery('main', broker='redis://localhost:6379/1')
 
 @app.task
 @dp.message_handler(commands=['count'], state=ActiveState)
@@ -56,31 +56,22 @@ async def start_and_add_user_in_BD(message: types.Message, state: FSMContext):
     Возможно стоит добавлять в БД на следующих этапах"""
 
     add_user(message.from_user.id)
-
     await message.answer(MESSAGES['start'])
     await ActiveState.default.set()
 
 
 @app.task
+@dp.message_handler(commands=['what'], state=[ActiveState, ChatState])
+async def what_message(message: types.Message):
+    """Информация о самом боте"""
+    await message.answer(MESSAGES['what'])
+
+
+@app.task
 @dp.message_handler(commands=['help'], state=[ActiveState, ChatState])
 async def help_message(message: types.Message):
-    """Информация о самом боте"""
+    """Отправка информации об эффективном обучении"""
     await message.answer(MESSAGES['help'])
-    log.info('hello from help')
-
-
-@app.task
-@dp.message_handler(commands=['howto'], state=[ActiveState, ChatState])
-async def howto_message(message: types.Message):
-    """Отправка информации об эффективном обучении"""
-    await message.answer(MESSAGES['howto'])
-
-
-@app.task
-@dp.message_handler(commands=['get'], state=[ActiveState, ChatState])
-async def help_message(message: types.Message):
-    """Отправка информации об эффективном обучении"""
-    await message.answer(MESSAGES['get'])
 
 
 @dp.message_handler(commands=['find'], state=ChatState)
@@ -220,6 +211,7 @@ async def login(message: types.Message):
 @dp.message_handler(content_types=types.ContentTypes.ANY, state=BotStates.login_process)
 async def check_login(message: types.Message, state: FSMContext):
     # await ActiveState.default.set()
+    await bot.delete_message(message.from_user.id, message.message_id)
     try:
         login, password = message.text.split(' ')
     except:
@@ -227,10 +219,9 @@ async def check_login(message: types.Message, state: FSMContext):
         await ActiveState.default.set()
         return
     result = db.login_check(login)
+
     if result:
         db_login, db_password, db_role, db_user_id = result[0]
-
-    # Протестировать логику неправильного ввода в модераторский режим
 
         if login == db_login and password == db_password and message.from_user.id == db_user_id:
             await message.answer(MESSAGES['log_in_success'])
@@ -241,16 +232,12 @@ async def check_login(message: types.Message, state: FSMContext):
                 await ModeratorMode.default.set()
                 await menu_moderator(message.from_user.id)
 
-            attempt = "successful"
         else:
             await message.answer(MESSAGES['log_in_unsuccess'])
             await ActiveState.default.set()
-            attempt = "unsuccessful"
     else:
         await message.answer(MESSAGES['log_in_unsuccess'])
         await ActiveState.default.set()
-        attempt = "unsuccessful"
-    log.info(f'Attempt to log in editor mode was {attempt}. user_id:{message.from_user.id}')
 
 
 async def menu_editor(user_id):
@@ -387,7 +374,10 @@ async def ban_list(message: types.Message, state: FSMContext):
 
     """
     bans = await get_bans_list()
-    await ban_sender(message.from_user.id, bans, True)
+    if bans:
+        await ban_sender(message.from_user.id, bans, True)
+    else:
+        await message.answer('There is no recent bans')
 
 
 @dp.message_handler(commands=['get_ban'], state=EditorMode.default)
@@ -476,7 +466,7 @@ async def get_info_new_role(message: types.Message, state: FSMContext):
 
 @dp.message_handler(commands=['del_role'], state=EditorMode.default)
 async def show_roles_to_del(message: types.Message, state: FSMContext):
-    query = db.show_roles()
+    query = db.show_roles(message.from_user.id)
     roles = ''
     for i, j, q in query:
         roles += f"{i}, {j}, {q}\n"
@@ -690,7 +680,7 @@ async def messages_catcher_no_mode(message: types.Message):
     if message.content_type == 'voice':
         await message.answer('First you need to find chat partner. Click /find to do it')
     else:
-        await message.answer('Use commands. For example: /find')
+        await message.answer('To have a conversation use command /find')
 
 
 @dp.message_handler(content_types=types.ContentTypes.ANY, state=BanState)

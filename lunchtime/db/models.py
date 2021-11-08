@@ -321,9 +321,9 @@ class Database:
         return res
 
     @staticmethod
-    def del_commercial(id):
+    def del_commercial(comm_id):
         with create_session() as session:
-            res = session.query(Commercial).filter(Commercial.id == id).delete()
+            res = session.query(Commercial).filter(Commercial.id == comm_id).delete()
         return res
 
     @staticmethod
@@ -334,9 +334,15 @@ class Database:
         return
 
     @staticmethod
-    def get_roles_from_Roles():
+    def remove_from_Roles(login):
         with create_session() as session:
-            roles = session.query(Roles.id, Roles.login, Roles.role).filter(Roles.role != 'Admin').all()
+            role = session.query(Role).filter(Role.login == login).delete()
+        return role
+
+    @staticmethod
+    def get_roles_from_Roles(user_id):
+        with create_session() as session:
+            roles = session.query(Roles.id, Roles.login, Roles.role).filter(Roles.user_id != user_id).all()
         return roles
 
     @staticmethod

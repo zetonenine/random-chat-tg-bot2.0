@@ -71,8 +71,11 @@ class DataInterface(Database, Cache):
     def add_new_role(self, login, password, role, user_id):
         return self.insert_into_Roles(login, password, role, user_id)
 
-    def show_roles(self):
-        return self.get_roles_from_Roles()
+    def remove_role(self, login):
+        return self.remove_from_Roles(login)
+
+    def show_roles(self, user_id):
+        return self.get_roles_from_Roles(user_id)
 
     def del_role(self, role_id):
         return self.del_role_from_Roles(role_id)
