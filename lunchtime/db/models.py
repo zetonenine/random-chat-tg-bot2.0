@@ -1,3 +1,4 @@
+import os
 import logging
 import contextlib
 import datetime
@@ -27,6 +28,26 @@ def initdb():
     Base.metadata.create_all(bind=engine)
 
 
+def _get_alembic_config():
+    from alembic.config import Config
+
+    folder = os.path.abspath((os.path.dirname(__file__)))
+    config = Config(os.path.join(folder, 'alembic.ini'))
+
+    directory = os.path.join(folder, 'alembic')
+    config.set_main_option('script_location', directory.replace('%', '%%'))
+    config.set_main_option('sqlalchemy.url', path)
+    return config
+
+
+def upgradedb():
+    from alembic import command
+
+    log.info('Creating Tables')
+    config = _get_alembic_config()
+    command.upgrade(config, 'heads')
+
+
 @contextlib.contextmanager
 def create_session():
     session = Session()
@@ -38,26 +59,6 @@ def create_session():
         raise
     finally:
         session.close()
-
-
-# def provide_session(func):
-#
-#     func_params = signature(func).parameters
-#     try:
-#         session_args_idx = tuple(func_params).index("session")
-#     except ValueError:
-#         raise ValueError(f"Function {func..qualname} has no session argument") from None
-#     del func_params
-#
-#     @functools.wraps(func)
-#     def wrapper(*args, **kwargs):
-#         if "session" in kwargs or session_args_idx < len(args):
-#             return func(*args, **kwargs)
-#         else:
-#             with create_session() as session:
-#                 return func(*args, session=session, **kwargs)
-#
-#     return wrapper
 
 
 class User(Base):
@@ -170,22 +171,6 @@ class UsersBanListRelation(Base):
     id = Column(Integer, primary_key=True)
     users_id = Column(Integer(), ForeignKey('user.id'), nullable=False)
     bans_id = Column(Integer(), ForeignKey('ban.id'), nullable=False)
-
-
-# убрать эту таблицу оставив только кэш
-class Connects(Base):
-
-    __tablename__ = 'connects'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, unique=True, nullable=False)
-    partner_user_id = Column(Integer, unique=True, nullable=True)
-
-    def __init__(
-            self,
-            user_id: int
-    ):
-        self.user_id = user_id
 
 
 class Commercial(Base):
