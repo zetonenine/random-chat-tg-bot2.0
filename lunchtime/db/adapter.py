@@ -115,3 +115,6 @@ class DataInterface(Database, Cache):
 
     def remove_ban(self, ban_id):
         return self.remove_ban_from_Ban(ban_id)
+
+    def get_unbanned_date(self, user_id):
+        return self.get_unban_date_from_Ban(user_id)

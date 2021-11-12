@@ -14,6 +14,8 @@ from lunchtime.utils.exceptions import UserAlreadyBanned
 log = logging.getLogger("models.py")
 
 # db - с контейнером, localhost - локально
+
+# path = os.environ.get('SQL_ALCHEMY_PATH')
 path = "postgresql+psycopg2://tgbot:tgbot@localhost:5432/tgbot"
 engine = create_engine(path, echo=True)
 metadata = MetaData(bind=engine)
@@ -26,26 +28,6 @@ BANNED_USER = 'banned'
 
 def initdb():
     Base.metadata.create_all(bind=engine)
-
-
-def _get_alembic_config():
-    from alembic.config import Config
-
-    folder = os.path.abspath((os.path.dirname(__file__)))
-    config = Config(os.path.join(folder, 'alembic.ini'))
-
-    directory = os.path.join(folder, 'alembic')
-    config.set_main_option('script_location', directory.replace('%', '%%'))
-    config.set_main_option('sqlalchemy.url', path)
-    return config
-
-
-def upgradedb():
-    from alembic import command
-
-    log.info('Creating Tables')
-    config = _get_alembic_config()
-    command.upgrade(config, 'heads')
 
 
 @contextlib.contextmanager
@@ -460,3 +442,9 @@ class Database:
             user.status = BANNED_USER
             session.merge(user)
         return
+
+    @staticmethod
+    def get_unban_date_from_Ban(user_id):
+        with create_session() as session:
+            date = session.query(Ban.unban_date).filter(Ban.user_id == user_id).first()
+            return date

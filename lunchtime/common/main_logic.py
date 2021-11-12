@@ -146,3 +146,7 @@ async def get_ban_by_date(ban_date):
 async def unban_by_user_id(ban_id):
     """ Удаляет бан по id """
     return db.remove_ban(ban_id)
+
+
+async def unbanned_date(user_id):
+    return db.get_unbanned_date(user_id)

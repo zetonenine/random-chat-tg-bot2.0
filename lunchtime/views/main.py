@@ -16,45 +16,22 @@ from lunchtime.db.adapter import DataInterface
 from lunchtime.db.models import initdb
 from lunchtime.common.main_logic import remove_report, get_moderator_name, get_oldest_report, ban_user, add_user, stop_room_chat, \
     get_partner_id, send_report, stop_searching_partner, \
-    start_room_chat, get_tg_banner, get_bans_list, get_ban_by_id, get_ban_by_date, unban_by_user_id
+    start_room_chat, get_tg_banner, get_bans_list, get_ban_by_id, get_ban_by_date, unban_by_user_id, unbanned_date
 from lunchtime.utils.exceptions import UserAlreadyBanned
 
-
-initdb()
-
-# logging.basicConfig(level=logging.INFO)
-
+# bot = Bot(token=os.environ.get('TOKEN'))
 bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
+
 
 dp = Dispatcher(bot, storage=RedisStorage2())
 dp.middleware.setup(LoggingMiddleware())
 
 db = DataInterface()
 
-LOGIN = 'admin'
-PASSWORD = 'password'
-my_user_id = 379096786
-try:
-    db.add_new_role(LOGIN, PASSWORD, 'Admin', my_user_id)
-except:
-    None
 
-app = Celery('main', broker='redis://localhost:6379/1')
-
-@app.task
-@dp.message_handler(commands=['count'], state=ActiveState)
-async def count_user(message: types.Message):
-    count = db.count_users()
-    await message.answer('Число - ' + str(count))
-
-
-@app.task
 @dp.message_handler(commands=['start'], state=[None, ActiveState, ChatState])
 async def start_and_add_user_in_BD(message: types.Message, state: FSMContext):
-
-    """Начало работы бота и добавление юзера в БД.
-    Возможно стоит добавлять в БД на следующих этапах"""
-
+    """Начало работы бота и добавление юзера в БД"""
     add_user(message.from_user.id)
     await message.answer(MESSAGES['start'])
     await ActiveState.default.set()
@@ -685,9 +662,9 @@ async def messages_catcher_no_mode(message: types.Message):
 
 @dp.message_handler(content_types=types.ContentTypes.ANY, state=BanState)
 async def ban_user_message_catcher(message: types.Message, state: FSMContext):
-    # логика написания остатка времени до разбана
-    time = 'anytime'
-    await message.answer(MESSAGES['ban_user_answer'] + time)
+    date = unbanned_date
+    str_date = datetime.strptime(date, "%d.%m.%Y")
+    await message.answer(MESSAGES['ban_user_answer'] + str_date)
 
 
 if __name__ == '__main__':

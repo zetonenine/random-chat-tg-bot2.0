@@ -130,7 +130,7 @@ messages_of_reports = 'That report include messages:'
 
 choose_punishment = 'Choose punishment or scroll up to check other reports'
 
-ban_user_answer = 'You were banned for not following the rules for using the bot. Until unbanned: '
+ban_user_answer = 'You were banned for not following the rules for using the bot. Date of unban: '
 
 
 MESSAGES = {
