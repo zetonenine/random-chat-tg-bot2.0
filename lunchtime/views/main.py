@@ -1,4 +1,6 @@
 import random
+import logging
+from datetime import datetime
 
 from aiogram import Bot, Dispatcher, executor, types
 # from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -9,7 +11,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from celery import Celery
 
 
-
 from lunchtime.utils.messages import MESSAGES
 from lunchtime.utils.states import BotStates, ChatState, EditorMode, ModeratorMode, ActiveState, BanState
 from lunchtime.db.adapter import DataInterface
@@ -18,6 +19,8 @@ from lunchtime.common.main_logic import remove_report, get_moderator_name, get_o
     get_partner_id, send_report, stop_searching_partner, \
     start_room_chat, get_tg_banner, get_bans_list, get_ban_by_id, get_ban_by_date, unban_by_user_id, unbanned_date
 from lunchtime.utils.exceptions import UserAlreadyBanned
+
+log = logging.getLogger(__name__)
 
 # bot = Bot(token=os.environ.get('TOKEN'))
 bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
@@ -37,14 +40,12 @@ async def start_and_add_user_in_BD(message: types.Message, state: FSMContext):
     await ActiveState.default.set()
 
 
-@app.task
 @dp.message_handler(commands=['what'], state=[ActiveState, ChatState])
 async def what_message(message: types.Message):
     """Информация о самом боте"""
     await message.answer(MESSAGES['what'])
 
 
-@app.task
 @dp.message_handler(commands=['help'], state=[ActiveState, ChatState])
 async def help_message(message: types.Message):
     """Отправка информации об эффективном обучении"""
@@ -63,9 +64,7 @@ async def wrong_state_command_find_catcher(message: types.Message):
 @dp.message_handler(commands=['find'], state=ActiveState)
 async def finding(message: types.Message, state: FSMContext):
 
-    """Меняет status юзера на '1' или 'True'.
-    Если юзер не будет добавлен в БД ранее
-    то нужно вызвать db.add_user"""
+    """  """
 
     await ChatState.default.set()
     await message.answer('Searching..')
@@ -85,7 +84,6 @@ async def voice_messages_sender(message: types.voice):
     """Обработчик войсов, пересылка сообщения если чат установлен, и ответ, если чата нет"""
 
     partner_id = get_partner_id(message.from_user.id)
-    print(message.voice.file_id)
     await bot.send_voice(partner_id, message.voice.file_id)
     log.info(f'User {message.from_user.id} sent voice to user {partner_id}. Voice_id: {message.voice.values["file_id"]}')
 
@@ -334,7 +332,7 @@ async def ban_handler(callback_query: types.CallbackQuery):
 
     elif type == 'unban1':
         try:
-            await unban_by_user_id(ban_id)
+            ban_user_id = await unban_by_user_id(ban_id)
             await bot.send_message(user_id, 'Пользователь разбанен')
         except:
             await bot.send_message(user_id, 'Что-то пошло не так')
@@ -586,7 +584,7 @@ async def punishment_callbacks(callback_query: types.CallbackQuery):
 
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('pns'), state=ModeratorMode)
-async def punishment_confirm(callback_query: types.CallbackQuery):
+async def punishment_confirm(callback_query: types.CallbackQuery, state: FSMContext):
 
     """ Иммитация функции которая будет принимать ответ: что делать с пользователем
     Это callback-data который в себе принесёт: report_id, terms (срок бана)
@@ -598,7 +596,7 @@ async def punishment_confirm(callback_query: types.CallbackQuery):
     if data_type == 'pns':
         try:
             reason, user_id = await ban_user(report_id, 10)
-            # await state.storage.set_state(user=user_id, state=BanState.default.state)
+            await state.storage.set_state(user=user_id, state=BanState.default.state)
             patner_id = get_partner_id(user_id)
             if patner_id:
                 await state.storage.set_state(user=patner_id, state=Ac.default.state)
@@ -610,7 +608,6 @@ async def punishment_confirm(callback_query: types.CallbackQuery):
                 chat_id=callback_query.from_user.id,
                 message_id=msg_id
             )
-            # добавить в BanState
             await bot.send_message(user_id, f'Вам ограничено использование бота на {term} дней по причине: {reason}')
 
         except UserAlreadyBanned:
@@ -662,9 +659,14 @@ async def messages_catcher_no_mode(message: types.Message):
 
 @dp.message_handler(content_types=types.ContentTypes.ANY, state=BanState)
 async def ban_user_message_catcher(message: types.Message, state: FSMContext):
-    date = unbanned_date
-    str_date = datetime.strptime(date, "%d.%m.%Y")
-    await message.answer(MESSAGES['ban_user_answer'] + str_date)
+    date = await unbanned_date(message.from_user.id)
+    if date:
+        today = datetime.now()
+        if today < date:
+            await message.answer(MESSAGES['ban_user_answer'] + f"{date.day}.{date.month}.{date.year}")
+            return
+    await state.storage.set_state(user=message.from_user.id, state=ActiveState.default.state)
+    await message.answer(MESSAGES['unban_message'])
 
 
 if __name__ == '__main__':

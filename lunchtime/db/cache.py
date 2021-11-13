@@ -24,7 +24,6 @@ class Cache():
         # check_cache = r.hget('users', user_id)
         if partner is None:
             Cache.add_user_to_order(user_id)
-            print(r.lrange('order', 0, -1))
         return partner.decode('utf-8') if partner and partner.decode('utf-8') != str(user_id) else None
 
     @staticmethod

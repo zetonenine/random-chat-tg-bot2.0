@@ -51,7 +51,7 @@ class User(Base):
     user_id = Column(Integer, unique=True, nullable=False)
     status = Column(String, default=ACTIVE_USER)
 
-    report = relationship('Report', secondary='users_reports_relation')
+    report = relationship('Report', secondary='users_reports_relation', back_populates="user")
     ban = relationship('Ban', uselist=False, backref="user")
     prev_ban = relationship('PrevBan', secondary='users_prev_bans_relation')
 
@@ -71,7 +71,7 @@ class Report(Base):
     message = Column(String, nullable=False)
     date = Column(DateTime, default=datetime.datetime.now())
 
-    user = relationship('User', secondary="users_reports_relation")
+    user = relationship('User', secondary="users_reports_relation", back_populates="report")
 
     def __init__(
             self,
@@ -437,11 +437,12 @@ class Database:
     def remove_ban_from_Ban(ban_id):
         with create_session() as session:
             q = session.query(Ban).filter(Ban.id == ban_id).first()
+            user_id = q.user_id
             session.delete(q)
             user = session.query(User).filter(User.user_id == q.user_id).first()
             user.status = BANNED_USER
             session.merge(user)
-        return
+        return user_id
 
     @staticmethod
     def get_unban_date_from_Ban(user_id):

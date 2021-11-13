@@ -49,9 +49,9 @@ async def check_partner_appearance(user_id, time):
     if partner_id is not None:
         return
     else:
-        if time < 8:
-            await asyncio.sleep(time)
-            return await check_partner_appearance(user_id, time + 3)
+        if time < 50:
+            await asyncio.sleep(5)
+            return await check_partner_appearance(user_id, time + 5)
         else:
             await stop_searching_partner(user_id)
             return 'undefined'
@@ -64,7 +64,7 @@ async def start_room_chat(user_id):
         log.info(f'Users connects: {user_id} and {partner_id}')
         return partner_id
     else:
-        partner_id = await check_partner_appearance(user_id, 3)
+        partner_id = await check_partner_appearance(user_id, 5)
         if not partner_id:
             log.info(f"User {user_id} didn't find partner")
         return partner_id

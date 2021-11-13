@@ -1,8 +1,5 @@
-import logging
 from lunchtime.db.models import Database
 from lunchtime.db.cache import Cache
-
-logging.basicConfig(level=logging.INFO)
 
 
 class DataInterface(Database, Cache):
