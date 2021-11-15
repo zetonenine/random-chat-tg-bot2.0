@@ -21,8 +21,8 @@ from lunchtime.utils.exceptions import UserAlreadyBanned
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(name='main.py')
 
-# bot = Bot(token=os.environ.get('TOKEN'))
-bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
+bot = Bot(token=os.environ.get('TOKEN'))
+# bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
 
 dp = Dispatcher(bot, storage=RedisStorage2())
 # dp.middleware.setup(LoggingMiddleware())
@@ -86,7 +86,7 @@ async def voice_messages_sender(message: types.voice):
     await bot.send_voice(partner_id, message.voice.file_id)
 
 
-@dp.message_handler(commands=['report'], state=ChatState.default)  # ChatMode()
+@dp.message_handler(commands=['report'], state=ChatState.default)
 async def report(message: types.Message, state: FSMContext):
     # keyboards.py
     if message.reply_to_message:

@@ -1,19 +1,10 @@
 import redis
 
 # скорее всего -- redis - с контейнером, localhost - локально
-r = redis.Redis(host='localhost', port=6379, db=0)
-
-# def redis_add_new_user(chatID):
-#     r.hset(0, chatID, "")
-#
-#
-# def redis_add_order(chatID):
-#
-#     r.zadd("mylist", {chatID: 0})
-#     return r.zrange("mylist", 0, -1, withscores=True)
+r = redis.Redis(host='redis', port=6379, db=0)
 
 
-class Cache():
+class Cache:
 
     def __init__(self, host='localhost', port=6379, db=0):
         r = redis.Redis(host=host, port=port, db=db)
