@@ -3,9 +3,7 @@ import logging
 from datetime import datetime
 
 from aiogram import Bot, Dispatcher, executor, types
-# from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
-from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from celery import Celery
@@ -20,14 +18,14 @@ from lunchtime.common.main_logic import remove_report, get_moderator_name, get_o
     start_room_chat, get_tg_banner, get_bans_list, get_ban_by_id, get_ban_by_date, unban_by_user_id, unbanned_date
 from lunchtime.utils.exceptions import UserAlreadyBanned
 
-log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(name='main.py')
 
 # bot = Bot(token=os.environ.get('TOKEN'))
 bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
 
-
 dp = Dispatcher(bot, storage=RedisStorage2())
-dp.middleware.setup(LoggingMiddleware())
+# dp.middleware.setup(LoggingMiddleware())
 
 db = DataInterface()
 
@@ -71,6 +69,7 @@ async def finding(message: types.Message, state: FSMContext):
     partner_id = await start_room_chat(message.from_user.id)
 
     if partner_id == 'undefined':
+        log.info(f"User [ID:{user_id}] did not find partner")
         await bot.send_message(message.from_user.id, MESSAGES['no_partner_message'])
         await ActiveState.default.set()
     elif partner_id:
@@ -85,7 +84,6 @@ async def voice_messages_sender(message: types.voice):
 
     partner_id = get_partner_id(message.from_user.id)
     await bot.send_voice(partner_id, message.voice.file_id)
-    log.info(f'User {message.from_user.id} sent voice to user {partner_id}. Voice_id: {message.voice.values["file_id"]}')
 
 
 @dp.message_handler(commands=['report'], state=ChatState.default)  # ChatMode()
@@ -97,8 +95,8 @@ async def report(message: types.Message, state: FSMContext):
                 message.from_user.id,
                 message.reply_to_message.voice.file_id
             )
-            inline_btn_1 = InlineKeyboardButton('Оскорбительное поведение', callback_data=f'btn.rude.{report_id}')
-            inline_btn_2 = InlineKeyboardButton('Не использует английский язык', callback_data=f'btn.not_english.{report_id}')
+            inline_btn_1 = InlineKeyboardButton('Оскорбительное поведение', callback_data=f'rprt.rude.{report_id}')
+            inline_btn_2 = InlineKeyboardButton('Не использует английский язык', callback_data=f'rprt.not_english.{report_id}')
             inline_kb = InlineKeyboardMarkup().add(inline_btn_1, inline_btn_2)
             await message.reply("Select the reason for the report", reply_markup=inline_kb)
         else:
@@ -107,7 +105,7 @@ async def report(message: types.Message, state: FSMContext):
         await message.reply(MESSAGES['report_explain'])
 
 
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('btn'), state=ChatState) # ChatMode()
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('rprt'), state=ChatState)
 async def report_callback_button(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.answer_callback_query(callback_query.id)
     _, reason, report_id = callback_query.data.split('.')
@@ -120,13 +118,12 @@ async def report_callback_button(callback_query: types.CallbackQuery, state: FSM
     await bot.delete_message(user_id, callback_query.message.message_id)
 
     partner_id = get_partner_id(user_id)
-    log.info(f'User {user_id} send report to user {partner_id}')
+    log.info(f' Report: [ID:{user_id}] send report for user [ID:{partner_id}]')
     await stop_room_chat(user_id, partner_id)
     await ActiveState.default.set()
     await state.storage.set_state(user=partner_id, state=ActiveState.default.state)
     await bot.send_message(user_id, MESSAGES['stop_1'])
     await bot.send_message(partner_id, MESSAGES['stop_2'])
-    log.info(f'Users disconnects: {user_id} and {partner_id}')
 
 
 @dp.message_handler(commands=['stop'], state=ChatState.default) # ChatMode()
@@ -157,7 +154,6 @@ async def accept_stop(message: types.Message, state: FSMContext):
         await state.storage.set_state(user=partner_id, state=ActiveState.default.state)
         await message.answer(MESSAGES['stop_1'] + (('\n\n' + banner) if banner and ad == 1 else ''))
         await bot.send_message(partner_id, MESSAGES['stop_2'] + (('\n\n' + banner) if banner and ad == 1 else ''))
-        log.info(f'Users disconnects: {message.from_user.id} and {partner_id}')
     else:
         await ChatState.default.set()
         await message.answer(MESSAGES['continue_chat'])
@@ -192,6 +188,7 @@ async def check_login(message: types.Message, state: FSMContext):
     except:
         await message.answer('Error')
         await ActiveState.default.set()
+        log.info(f' Someone tried to log in: [ID:{message.from_user.id}] [TEXT:{message.text}]')
         return
     result = db.login_check(login)
 
@@ -200,12 +197,14 @@ async def check_login(message: types.Message, state: FSMContext):
 
         if login == db_login and password == db_password and message.from_user.id == db_user_id:
             await message.answer(MESSAGES['log_in_success'])
+            log.info(f' User log in: [ID:{message.from_user.id}] [LOGIN:{login}]')
             if db_role == 'Admin':
                 await EditorMode.default.set()
                 await menu_editor(message.from_user.id)
             elif db_role == 'Moderator':
                 await ModeratorMode.default.set()
                 await menu_moderator(message.from_user.id)
+            return
 
         else:
             await message.answer(MESSAGES['log_in_unsuccess'])
@@ -213,6 +212,7 @@ async def check_login(message: types.Message, state: FSMContext):
     else:
         await message.answer(MESSAGES['log_in_unsuccess'])
         await ActiveState.default.set()
+    log.info(f' Someone tried to log in: [ID:{message.from_user.id}] [TEXT:{message.text}]')
 
 
 async def menu_editor(user_id):
@@ -332,7 +332,7 @@ async def ban_handler(callback_query: types.CallbackQuery):
 
     elif type == 'unban1':
         try:
-            ban_user_id = await unban_by_user_id(ban_id)
+            await unban_by_user_id(ban_id)
             await bot.send_message(user_id, 'Пользователь разбанен')
         except:
             await bot.send_message(user_id, 'Что-то пошло не так')
@@ -599,10 +599,10 @@ async def punishment_confirm(callback_query: types.CallbackQuery, state: FSMCont
             await state.storage.set_state(user=user_id, state=BanState.default.state)
             patner_id = get_partner_id(user_id)
             if patner_id:
-                await state.storage.set_state(user=patner_id, state=Ac.default.state)
+                await state.storage.set_state(user=patner_id, state=ActiveState.default.state)
                 await bot.send_message(partner_id, MESSAGES['stop_2'])
-                log.info(f'Users disconnects: {callback_query.from_user.id} and {partner_id}')
-            # добавить возможность пользователю со статусом Ban смотреть информацию о правилах использования бота
+                logging.info(f' Disconnect: [ID:{user_id}] and [ID:{partner_id}]')
+
             await bot.edit_message_text(
                 text='Пользователь был забанен',
                 chat_id=callback_query.from_user.id,
@@ -614,7 +614,7 @@ async def punishment_confirm(callback_query: types.CallbackQuery, state: FSMCont
             await bot.send_message(callback_query.from_user.id, 'Пользователь уже находится в бане')
 
         except Exception as ex:
-            log.error(f'Не удалось добавить пользователя в Баню: {ex}')
+            logging.error(f'Error при попытке добавить пользователя в бан: {ex}')
             await bot.send_message(callback_query.from_user.id, 'Не удалось забанить пользователя')
 
     elif data_type == 'pnsnot':
@@ -670,4 +670,4 @@ async def ban_user_message_catcher(message: types.Message, state: FSMContext):
 
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=False)

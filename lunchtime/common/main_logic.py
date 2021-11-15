@@ -7,12 +7,9 @@ from celery import Celery
 
 app = Celery('main', broker='redis://:@localhost:6379/1')
 
-log = logging.getLogger(name='main.py')
+log = logging.getLogger(name='main_logic.py')
 
 db = DataInterface()
-
-LOGIN = 'admin'
-PASSWORD = 'password'
 
 
 def add_user(user_id):
@@ -41,7 +38,8 @@ async def stop_searching_partner(user_id):
 
 
 async def stop_room_chat(user_id, partner_user_id):
-    db.stop_room_chat2(user_id, partner_user_id)
+    log.info(f' Disconnect: [ID:{user_id}] and [ID:{partner_user_id}]')
+    db.stop_room_chat(user_id, partner_user_id)
 
 
 async def check_partner_appearance(user_id, time):
@@ -61,12 +59,10 @@ async def start_room_chat(user_id):
     partner_id = await find_user(user_id)
     if partner_id:
         await connect_users(user_id, partner_id)
-        log.info(f'Users connects: {user_id} and {partner_id}')
+        log.info(f' Connect: [ID:{user_id}] and [ID:{partner_id}]')
         return partner_id
     else:
         partner_id = await check_partner_appearance(user_id, 5)
-        if not partner_id:
-            log.info(f"User {user_id} didn't find partner")
         return partner_id
 
 

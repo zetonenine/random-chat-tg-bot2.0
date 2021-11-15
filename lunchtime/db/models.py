@@ -1,5 +1,4 @@
 import os
-import logging
 import contextlib
 import datetime
 from typing import Optional, List
@@ -11,13 +10,11 @@ from sqlalchemy import desc
 
 from lunchtime.utils.exceptions import UserAlreadyBanned
 
-log = logging.getLogger("models.py")
-
 # db - с контейнером, localhost - локально
 
 # path = os.environ.get('SQL_ALCHEMY_PATH')
 path = "postgresql+psycopg2://tgbot:tgbot@localhost:5432/tgbot"
-engine = create_engine(path, echo=True)
+engine = create_engine(path)
 metadata = MetaData(bind=engine)
 Base = declarative_base(metadata=metadata)
 Session = sessionmaker(bind=engine)
@@ -53,7 +50,7 @@ class User(Base):
 
     report = relationship('Report', secondary='users_reports_relation', back_populates="user")
     ban = relationship('Ban', uselist=False, backref="user")
-    prev_ban = relationship('PrevBan', secondary='users_prev_bans_relation')
+    prev_ban = relationship('PrevBan', secondary='users_prev_bans_relation', back_populates="user")
 
     def __init__(
             self,
@@ -128,7 +125,7 @@ class PrevBan(Base):
     reason = Column(String)
     message = Column(String, nullable=False)
 
-    user = relationship('User', secondary='users_prev_bans_relation')
+    user = relationship('User', secondary='users_prev_bans_relation', back_populates="prev_ban")
 
     def __init__(
             self,
@@ -192,7 +189,6 @@ class Roles(Base):
 class Database:
 
     def __init__(self):
-        initdb()
         self.session = Session()
 
     @staticmethod
@@ -237,20 +233,6 @@ class Database:
 
             except:
                 free = None
-
-        return free
-
-    @staticmethod
-    def disconnect_users(user_id):
-        with create_session() as session:
-            free = session.query(Connects).filter(Connects.user_id == user_id).first().partner_user_id
-
-            # убрать эти запроса возвращая только partner_id для кэша
-            session.query(Connects).filter(Connects.user_id == user_id).delete()
-            try:
-                session.query(Connects).filter(Connects.user_id == free).delete()
-            except:
-                None
 
         return free
 

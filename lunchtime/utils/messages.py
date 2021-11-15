@@ -66,7 +66,7 @@ no_partner_message = 'Unfortunately, all users are already busy 🤷‍♀️ Tr
 
 stop_searching = 'User search cancel. If you want try again, press /find'
 
-sure_stop_chat = 'Are you sure you want to end the conversation? Write <b>yep</b> to the chat'
+sure_stop_chat = 'Are you sure you want to end the conversation? Write <b>YEP</b> to the chat'
 
 continue_chat = 'Cancel completion. You still have a companion 🤝'
 

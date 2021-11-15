@@ -29,12 +29,7 @@ class DataInterface(Database, Cache):
         self.add_connects_cache(user_id, partner_id)
         return partner_id
 
-    def stop_room_chat(self, user_id):
-        partner_id = self.disconnect_users(user_id)
-        self.rem_connects_cache(user_id, partner_id)
-        return partner_id
-
-    def stop_room_chat2(self, user_id, partner_id):
+    def stop_room_chat(self, user_id, partner_id):
         self.rem_connects_cache(user_id, partner_id)
         return partner_id
 
