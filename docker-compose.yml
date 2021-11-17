@@ -11,9 +11,9 @@ services:
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     environment:
-      POSTGRES_PASSWORD: randomchat
-      POSTGRES_USER: randomchat
-      POSTGRES_DB: randomchat
+      POSTGRES_PASSWORD: lunchtime
+      POSTGRES_USER: lunchtime
+      POSTGRES_DB: lunchtime
 
   redis:
     image: redis:latest
@@ -28,7 +28,7 @@ services:
     restart: always
 
   bot:
-    image: random_chat:latest
+    image: lunchtime:latest
     ports:
       - 80:80
     build:
@@ -36,10 +36,20 @@ services:
       dockerfile: Dockerfile
     container_name: "bot"
     restart: always
-    environment:
-      - BOT_TOKEN=1233194283:AAEltBBA7sqZ7HPo5Gxef5fALXiqhyRwBqk
     depends_on:
       - db
+
+  #  worker:
+  #    image: celery
+  #    command: [ 'celery', 'worker', '-A', 'app.app', '-l', 'info' ]
+  #    environment:
+  #      - BROKER_URL=redis://:@localhost:6379/1
+  ##      - RESULT_BACKEND=redis://redis:6379/0
+  ##      - C_FORCE_ROOT=true
+  #    volumes:
+  #      - ./:/app/
+  #    depends_on:
+  #      - redis
 
 volumes:
   postgres-db-volume:
