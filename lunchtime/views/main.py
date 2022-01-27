@@ -21,10 +21,11 @@ from lunchtime.utils.exceptions import UserAlreadyBanned
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(name='main.py')
 
-bot = Bot(token=os.environ.get('TOKEN'))
-# bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
+# bot = Bot(token=os.environ.get('TOKEN'))
+bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
 
-dp = Dispatcher(bot, storage=RedisStorage2())
+dp = Dispatcher(bot, storage=RedisStorage2(host='redis'))  # для контейнера
+# dp = Dispatcher(bot, storage=RedisStorage2())  # локально
 # dp.middleware.setup(LoggingMiddleware())
 
 db = DataInterface()
@@ -66,11 +67,12 @@ async def finding(message: types.Message, state: FSMContext):
 
     await ChatState.default.set()
     await message.answer('Searching..')
-    partner_id = await start_room_chat(message.from_user.id)
+    user_id = message.from_user.id
+    partner_id = await start_room_chat(user_id)
 
     if partner_id == 'undefined':
         log.info(f"User [ID:{user_id}] did not find partner")
-        await bot.send_message(message.from_user.id, MESSAGES['no_partner_message'])
+        await bot.send_message(user_id, MESSAGES['no_partner_message'])
         await ActiveState.default.set()
     elif partner_id:
         await message.answer(MESSAGES['match_1'], parse_mode='html')
@@ -332,7 +334,8 @@ async def ban_handler(callback_query: types.CallbackQuery):
 
     elif type == 'unban1':
         try:
-            await unban_by_user_id(ban_id)
+            unbanned_user_id = await unban_by_user_id(ban_id)
+            await state.storage.set_state(user=unbanned_user_id, state=ActiveState.default.state)
             await bot.send_message(user_id, 'Пользователь разбанен')
         except:
             await bot.send_message(user_id, 'Что-то пошло не так')

@@ -11,9 +11,9 @@ services:
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     environment:
-      POSTGRES_PASSWORD: lunchtime
-      POSTGRES_USER: lunchtime
-      POSTGRES_DB: lunchtime
+      POSTGRES_PASSWORD: tgbot
+      POSTGRES_USER: tgbot
+      POSTGRES_DB: tgbot
 
   redis:
     image: redis:latest
@@ -28,7 +28,7 @@ services:
     restart: always
 
   bot:
-    image: lunchtime:latest
+    image: lunchtime_bot:latest
     ports:
       - 80:80
     build:
@@ -38,6 +38,7 @@ services:
     restart: always
     depends_on:
       - db
+      - redis
 
   #  worker:
   #    image: celery

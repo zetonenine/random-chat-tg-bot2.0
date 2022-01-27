@@ -12,8 +12,8 @@ from lunchtime.utils.exceptions import UserAlreadyBanned
 
 # db - с контейнером, localhost - локально
 
-path = os.environ.get('SQL_ALCHEMY_PATH')
-# path = "postgresql+psycopg2://tgbot:tgbot@localhost:5432/tgbot"
+# path = os.environ.get('SQL_ALCHEMY_PATH')
+path = "postgresql+psycopg2://tgbot:tgbot@db:5432/tgbot"
 engine = create_engine(path)
 metadata = MetaData(bind=engine)
 Base = declarative_base(metadata=metadata)
@@ -422,7 +422,7 @@ class Database:
             user_id = q.user_id
             session.delete(q)
             user = session.query(User).filter(User.user_id == q.user_id).first()
-            user.status = BANNED_USER
+            user.status = ACTIVE_USER
             session.merge(user)
         return user_id
 
