@@ -6,9 +6,9 @@ on:
       - master
 
 env:
-  REGISTRY: "registry.digitalocean.com/lunchtime-bot"
+  REGISTRY: "registry.digitalocean.com/tg-containter"
   IMAGE_NAME: "lunchtime_bot"
-  CONTAINER_NAME: "tg_bot"
+  CONTAINER_NAME: "bot"
 
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
         run: echo $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
 
       - name: Build container image
-        run: docker build -t tgbot .
+        run: docker build -t lunchtime_bot .
 
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
@@ -35,7 +35,7 @@ jobs:
 
       - name: Tag image
         run:
-          docker tag tgbot $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
+          docker tag lunchtime_bot $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
 
       - name: Push image to DigitalOcean Container Registry
         run: docker push $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
