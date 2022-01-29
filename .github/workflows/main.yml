@@ -62,4 +62,4 @@ jobs:
             # Set env variables
             export TOKEN=${{ secrets.TELEGRAM_TOKEN }}
             # Run a new container from a new image
-            docker run -e TOKEN --restart always -d --name $(echo $CONTAINER_NAME) $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
+            docker run -e TOKEN --restart always --name $(echo $CONTAINER_NAME) $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
