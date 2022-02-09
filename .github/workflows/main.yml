@@ -63,4 +63,4 @@ jobs:
             export TOKEN=${{ secrets.TELEGRAM_TOKEN }}
             export SQL_ALCHEMY_PATH=${{ secrets.SQL_ALCHEMY_PATH }}
             # Run a new container from a new image
-            docker run -e TOKEN -e SQL_ALCHEMY_PATH --restart always --name $(echo $CONTAINER_NAME) $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
+            docker run --network='host' -e TOKEN -e SQL_ALCHEMY_PATH --restart always --name $(echo $CONTAINER_NAME) $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
