@@ -1,7 +1,7 @@
 import redis
 
 # скорее всего -- redis - с контейнером, localhost - локально
-r = redis.Redis(host='redis', port=6379, db=0)
+r = redis.Redis(host='localhost', port=6379, db=1)
 
 
 class Cache:

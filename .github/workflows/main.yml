@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  REGISTRY: "registry.digitalocean.com/tg-containter"
+  REGISTRY: "registry.digitalocean.com/tg-container"
   IMAGE_NAME: "lunchtime_bot"
   CONTAINER_NAME: "bot"
 
@@ -60,6 +60,7 @@ jobs:
             # Remove old container
             docker rm $(echo $CONTAINER_NAME)
             # Set env variables
-            export TOKEN=${{ secrets.TELEGRAM_TOKEN }}
+            export TOKEN=${{ secrets.TOKEN }}
+            export SQL_ALCHEMY_PATH=${{ secrets.SQL_ALCHEMY_PATH }}
             # Run a new container from a new image
-            docker run -e TOKEN --restart always --name $(echo $CONTAINER_NAME) $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)
+            docker run --network='host' -e TOKEN -e SQL_ALCHEMY_PATH --restart always --name $(echo $CONTAINER_NAME) $(echo $REGISTRY)/$(echo $IMAGE_NAME):$(echo $GITHUB_SHA | head -c7)

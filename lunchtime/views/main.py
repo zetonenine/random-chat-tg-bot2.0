@@ -21,11 +21,9 @@ from lunchtime.utils.exceptions import UserAlreadyBanned
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(name='main.py')
 
-# bot = Bot(token=os.environ.get('TOKEN'))
-bot = Bot(token='1147716469:AAGUwpxYo_GZ9oZzYchORHXGbx1hOB82kCg')
-
-dp = Dispatcher(bot, storage=RedisStorage2(host='redis'))  # для контейнера
-# dp = Dispatcher(bot, storage=RedisStorage2())  # локально
+bot = Bot(token=os.environ.get('TOKEN'))
+# dp = Dispatcher(bot, storage=RedisStorage2(host='redis'))  # для контейнера
+dp = Dispatcher(bot, storage=RedisStorage2())  # локально
 # dp.middleware.setup(LoggingMiddleware())
 
 db = DataInterface()
